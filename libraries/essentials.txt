@@ -45,9 +45,23 @@ end
 
 ---MAINFRAME FUNCTIONS
 
+---WHITELIST
+
 mainframe.whitelist = {}
 mainframe.blacklist = {}
 mainframe.permalist = {}
+
+---SAVE FILE
+
+function mainframe.saveSettings()
+
+end
+
+function mainframe.loadSettings()
+
+end
+
+---SETTINGS
 
 mainframe.settings 	= {}
 
@@ -178,6 +192,19 @@ function mainframe.setSetting(name, value)
 	mainframe.settings[name].value = value
 	return true
 end
+
+--Sets all settings back to their default values.
+function mainframe.resetAllSettings()
+	for k, v in pairs(mainframe.settings) do
+		v.value = v.default
+	end
+end
+
+function mainframe.resetSetting(name)
+	if mainframe.settings[name] == nil then error("Unknown setting", 1) end
+	mainframe.settings[name].value = mainframe.settings[name].default
+end
+
 
 --Lastly we're adding all written functions into the environment.
 libraries.addToEnvironment("mainframe", mainframe)
