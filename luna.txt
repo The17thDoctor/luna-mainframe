@@ -1,0 +1,15 @@
+--@name Luna Mainframe
+--@author The17thDoctor
+--@class emitter, screen, processor
+--@highres
+--@shared
+
+--@dependency STEAM_0:0:52002590 luna/bootstrapper.txt sh
+
+--@includedir luna/libraries
+--@includedir luna/modules
+
+bootstrapper.addLibrary("environment")
+bootstrapper.loadAllLibraries()
+bootstrapper.loadAllModules()
+

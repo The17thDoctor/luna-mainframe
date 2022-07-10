@@ -1,0 +1,43 @@
+--@name Luna Mainframe | Bootstrapper
+--@author The17thDoctor
+--@class none
+
+--@includedir luna/libraries
+--@includedir luna/modules
+
+--[[
+	The bootstrapper is responsible for loading libraries and modules.
+	The essentials library should be loaded first, environment last.
+]]--
+
+--All loaded libraries, essentials should be loaded first, environment last.
+bootstrapper = {}
+
+local libraries = {}
+
+function bootstrapper.addLibrary(libraryName)
+	libraries[#libraries+1] = libraryName
+end
+
+function bootstrapper.loadAllLibraries()
+	for i = 1, #libraries do
+		require("luna/libraries/"..libraries[i])
+	end
+end
+
+function bootstrapper.loadAllModules()
+	local scripts = starfall.getScripts()
+	for path, moduleCode in pairs(scripts) do
+		if string.find(path, "luna/modules/") ~= nil then
+			setfenv(moduleCode, getModuleEnvironment(path))
+			xpcall(moduleCode, errorHandler)
+		end
+	end
+end
+
+bootstrapper.addLibrary("essentials")
+bootstrapper.addLibrary("networking")
+bootstrapper.addLibrary("rendering")
+bootstrapper.addLibrary("wirelink")
+bootstrapper.addLibrary("design")
+bootstrapper.addLibrary("chat")

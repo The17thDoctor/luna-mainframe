@@ -1,0 +1,16 @@
+--@name Luna Mainframe | Networking
+--@author The17thDoctor
+
+--[[
+	This library ensures the good networking of all messages.
+
+	It also ensures that networking inside modules stay local
+	such as no module can read another's net messages.
+
+	It is recommend to keep those libraries getting loaded from shared in order to get updates.
+]]--
+
+hook("net", "Main Network Manager", function(length, player)
+	local moduleID = net.readString()
+	hook.run("LUNA_MODULE_"..moduleID.."_luna_net")
+end)

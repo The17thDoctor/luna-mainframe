@@ -1,0 +1,26 @@
+--@name Luna Mainframe | Design
+--@author The17thDoctor
+--@class none
+
+--[[
+	This library implements the core systems for Luna's screen design.
+	The end user is free to overwrite them without having to touch this library.
+
+	It is recommend to keep those libraries getting loaded from shared in order to get updates.
+]]--
+
+if SERVER then return end
+
+local f = render.createFont("Roboto", 100)
+
+hook("render", "rd", function()
+	render.clear()
+	render.start3D2D(ents.self():pos() + Vector(0, 0, 20), Angle(0, time.curTime()*30, 90), .1)
+	render.setColor(Color.fromHSV(time.curTime(), 1, 1))
+	render.drawText(f, 0, 0, "Luna !", render.TEXT_ALIGN_CENTER)
+	render.end3D2D()
+
+	render.start3D2D(ents.self():pos() + Vector(0, 0, 20), Angle(0, time.curTime()*30+180, 90), .1)
+	render.drawText(f, 0, 0, "Luna !", render.TEXT_ALIGN_CENTER)
+	render.end3D2D()
+end)

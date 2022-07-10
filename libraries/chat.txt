@@ -1,0 +1,185 @@
+--@name Luna Mainframe | Chat
+--@author The17thDoctor
+--@class none
+
+--[[
+	Implements standard chat functions for modules to use.
+	Can be overwritten without having to touch this library.
+
+	It is recommend to keep those libraries getting loaded from shared in order to get updates.
+]]--
+
+if CLIENT then return end
+
+chat.color = {
+	prefix = Color(71, 108, 207),
+	blue = Color(100, 150, 255),
+	red = Color(255, 100, 75),
+	green = Color(100, 255, 100),
+	yellow = Color(255, 225, 100),
+	white = Color(235, 235, 235),
+	gray = Color(175, 175, 175),
+	orange = Color(255, 160, 75),
+}
+
+local commands = {}
+
+local function parsePrintTable(...)
+	local elements = {...}
+	local finalTable = {}
+
+	for i = 1, #elements do
+		local element = elements[i]
+		local eType = type(element)
+
+		if type(element) == "Player" then
+			finalTable[#finalTable+1] = element:getTeamColor()
+			finalTable[#finalTable+1] = element:name()
+			finalTable[#finalTable+1] = chat.color.white
+		elseif type(element) == "Entity" then
+			finalTable[#finalTable+1] = chat.color.green
+			finalTable[#finalTable+1] = tostring(element)
+			finalTable[#finalTable+1] = chat.color.white
+		elseif type(element) == "table" then
+			if getmetatable(element) == "Color" then
+				finalTable[#finalTable+1] = element
+			else
+				for i = 1, #element do
+					finalTable[#finalTable+1] = element[i]
+				end
+			end
+		elseif type(element) == "boolean" then
+			if element then
+				finalTable[#finalTable+1] = chat.color.green
+			else
+				finalTable[#finalTable+1] = chat.color.red
+			end
+
+			finalTable[#finalTable+1] = tostring(element)
+		elseif type(element) == "Vector" then
+			finalTable[#finalTable+1] = chat.color.white
+			finalTable[#finalTable+1] = "("
+			finalTable[#finalTable+1] = chat.color.blue
+			finalTable[#finalTable+1] = tostring(math.round(element.x, 2))
+			finalTable[#finalTable+1] = chat.color.white
+			finalTable[#finalTable+1] = ", "
+			finalTable[#finalTable+1] = chat.color.blue
+			finalTable[#finalTable+1] = tostring(math.round(element.y, 2))
+			finalTable[#finalTable+1] = chat.color.white
+			finalTable[#finalTable+1] = ", "
+			finalTable[#finalTable+1] = chat.color.blue
+			finalTable[#finalTable+1] = tostring(math.round(element.z, 2))
+			finalTable[#finalTable+1] = chat.color.white
+			finalTable[#finalTable+1] = ")"
+			finalTable[#finalTable+1] = chat.color.white
+		elseif type(element) == "Angle" then
+			finalTable[#finalTable+1] = chat.color.white
+			finalTable[#finalTable+1] = "("
+			finalTable[#finalTable+1] = chat.color.green
+			finalTable[#finalTable+1] = tostring(math.round(element.p, 2))
+			finalTable[#finalTable+1] = chat.color.white
+			finalTable[#finalTable+1] = ", "
+			finalTable[#finalTable+1] = chat.color.green
+			finalTable[#finalTable+1] = tostring(math.round(element.y, 2))
+			finalTable[#finalTable+1] = chat.color.white
+			finalTable[#finalTable+1] = ", "
+			finalTable[#finalTable+1] = chat.color.green
+			finalTable[#finalTable+1] = tostring(math.round(element.r, 2))
+			finalTable[#finalTable+1] = chat.color.white
+			finalTable[#finalTable+1] = ")"
+			finalTable[#finalTable+1] = chat.color.white
+		elseif type(element) == "string" then
+			local splitStr = element:explode("%b{}", true)
+			local colorCodes = string.gmatch(element, "%b{}")
+
+			for colorCode in colorCodes do
+				finalTable[#finalTable+1] = splitStr[1]
+				table.remove(splitStr, 1)
+
+				color = colorCode:explode("[{}]", true)[2]
+				if chat.color[color] ~= nil then
+					finalTable[#finalTable+1] = chat.color[color]
+				else
+					finalTable[#finalTable+1] = colorCode
+				end
+			end
+
+			finalTable[#finalTable+1] = splitStr[1]
+			finalTable[#finalTable+1] = chat.color.white
+		elseif type(element) == "number" then
+			finalTable[#finalTable+1] = chat.color.blue
+			finalTable[#finalTable+1] = tostring(element)
+			finalTable[#finalTable+1] = chat.color.white
+		else
+			error("Unhandled variable type : "..type(element), 2)
+		end
+	end
+
+	return finalTable
+end
+
+--Global print functions
+function Say(player, ...)
+	local prefix = mainframe.getSetting("Chat Prefix").value
+	local printTable = parsePrintTable(chat.color.prefix, prefix.." ➾ ", ...)
+	if player == ents.owner() then
+		printColor(unpack(printTable))
+	else
+		chat.tell(player, unpack(printTable))
+	end
+end
+
+function Warn(player, ...)
+	local prefix = mainframe.getSetting("Chat Prefix").value
+	local printTable = parsePrintTable(chat.color.yellow, prefix.." ➾ ", ...)
+
+	if player == ents.owner() then
+		printColor(unpack(printTable))
+	else
+		chat.tell(player, unpack(printTable))
+	end
+end
+
+function Error(player, ...)
+	local prefix = mainframe.getSetting("Chat Prefix").value
+	local printTable = parsePrintTable(chat.color.red, prefix.." ➾ ", ...)
+
+	if player == ents.owner() then
+		printColor(unpack(printTable))
+	else
+		chat.tell(player, unpack(printTable))
+	end
+end
+
+function chat.addCommand(commandTable)
+
+end
+
+function chat.runCommand(commandString)
+
+end
+
+local function parseChat(message, player)
+
+	if not player:getPermissions() then return false end
+
+	local chatPrefix  = mainframe.getSetting("Command Prefix").value
+	local shortPrefix = utf8.sub(chatPrefix, 1, 2)
+	local explodedMessage = message:explode(" ")
+
+	if message:lower() == "/luna id" then
+		Say(player, "My ID is : ", ents.self():index(), ".")
+	end
+
+	if chatPrefix ~= explodedMessage[1]:lower() and shortPrefix ~= explodedMessage[1]:lower() then
+		return false
+	end
+
+	if player ~= ents.owner() then
+		if tonumber(explodedMessage[2]) ~= ents.self():index() then
+			return false
+		end
+	end
+
+	Say(player, "Hello ", player, "!")
+end

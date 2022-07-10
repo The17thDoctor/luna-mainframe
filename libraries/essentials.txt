@@ -1,0 +1,96 @@
+--@name Luna Mainframe | Essentials
+--@author The17thDoctor
+--@class none
+
+--[[
+	The mainframe's functions and systems other libraries and modules might use.
+	Also implements standard versions of core systems like whitelist or settings control.
+
+	All core systems can be overwritten if the end user is feeling like it without
+	having to touch this library.
+
+	It is recommend to keep those libraries getting loaded from shared in order to get updates.
+]]--
+
+--This is the global mainframe library
+mainframe = {}
+--This is the global library-wide library, implementing functions for libraries only to use.
+libraries = {
+	environment = {},
+	environmentBlacklist = {}
+}
+
+--Throws an error if the type of the given variable doesnt match the type to check.
+function libraries.checkType(value, typeToCheck, argumentName)
+	if type(value) ~= typeToCheck then
+		error("Invalid type for argument "..argumentName.." expected "..typeToCheck.." got "..type(value), 2)
+	end
+end
+
+local checkType = libraries.checkType
+
+--Adds a new library to the module environment.
+function libraries.addToEnvironment(libraryName, libraryTable)
+	checkType(libraryName, "string", "libraryName")
+	checkType(libraryTable, "table", "libraryTable")
+	libraries.environment[libraryName] = libraryTable
+end
+
+--Removes a default starfall library from the list of libraries to add by default.
+--Useful if you want to replace it with your own version.
+function libraries.removeFromEnvironment(libraryName)
+	libraries.environmentBlacklist[libraryName] = true
+end
+
+
+---MAINFRAME FUNCTIONS
+
+mainframe.whitelist = {}
+mainframe.blacklist = {}
+mainframe.permalist = {}
+
+mainframe.settings 	= {}
+
+settingType = {
+	NUMBER = "NUMBER",
+	STRING = "STRING",
+	BOOLEAN = "BOOLEAN",
+	WORD = "WORD",
+}
+
+function mainframe.addSetting(id, name, type, default, extras)
+	checkType(id, "string", "#1")
+	checkType(name, "string", "#2")
+	type = type:upper()
+	if settingType[type] == nil then error("Unknown settings type", 1) end
+	if type == "NUMBER" and type(default) ~= "number" then
+		error("Invalid default value (expected number, got "..type(default)..")", 1)
+	elseif (type == "WORD" or type == "STRING") and type(default) ~= "string" then
+		error("Invalid default value (expected string, got "..type(default)..")", 1)
+	elseif type == "BOOLEAN" and type(default) ~= "boolean" then
+		error("Invalid default value (expected boolean, got "..type(default)..")", 1)
+	end
+
+	if type == "NUMBER" then
+		if extras.min ~= nil and default < extras.min then
+			error("Default value under the minimum set value", 1)
+		elseif extras.max ~= nil and default > extras.max then
+			error("Default value over the maximum set value", 1)
+		end
+	elseif type == "WORD" then
+		if extras.length ~= nil and utf8.len(default) > extras.length then
+			error("Default value over the maximum length", 1)
+		elseif #default:explode("%s", true) > 1 then
+			error("Default value contains multiple words (change the setting type to STRING ?)", 1)
+		end
+	elseif type == "STRING" then
+		if extras.length ~= nil and utf8.len(default) > extras.length then
+			error("Default value over the maximum length", 1)
+		end
+	end
+
+	mainframe.settings[id] = {name, type, default, extras}
+end
+
+--Lastly we're adding all written functions into the environment.
+libraries.addToEnvironment("mainframe", mainframe)

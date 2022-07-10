@@ -1,0 +1,11 @@
+--@name Luna Mainframe | Rendering
+--@author The17thDoctor
+--@class none
+
+--[[
+	Implements basic drawing functions on top of the standard render library.
+
+	It is recommend to keep those libraries getting loaded from shared in order to get updates.
+]]--
+
+if SERVER then return end

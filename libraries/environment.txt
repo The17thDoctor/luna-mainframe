@@ -1,0 +1,412 @@
+--@name Luna Mainframe | Environment
+--@author The17thDoctor
+
+--[[
+	This library creates the environment necessary for modules to function.
+	It also ensures that all errors thrown by modules are caught by safeguards in order to avoid
+	the mainframe from crashing entirely.
+]]--
+
+--Removing starfall standard libraries to replace them.
+libraries.removeFromEnvironment("_G")
+libraries.removeFromEnvironment("net")
+libraries.removeFromEnvironment("hook")
+libraries.removeFromEnvironment("wire")
+libraries.removeFromEnvironment("chat")
+libraries.removeFromEnvironment("timer")
+libraries.removeFromEnvironment("channels")
+
+function errorHandler(errorMessage)
+	--Warn(ents.owner(), "A mainframe module has errored, check console for more details.")
+	printColor("A mainframe module has errored, check console for more details.")
+	timer.simple(0.1, function()
+		console.error(errorMessage, "")
+	end)
+end
+
+function getModuleEnvironment(modulePath)
+	--The unique module identifier.
+	local ID = CRC(modulePath)
+
+	--Creates suitable identifiers for hooks, callbacks, timers in order to avoid conflicts.
+	local function createID(identifier)
+		return "LUNA_MODULE_"..ID.."_"..tostring(identifier)
+	end
+
+	environment = {}
+
+	---GLOBAL
+	environment._G = {}
+	environment._G.Angle = Angle
+	environment._G.assert = assert
+	environment._G.Color = Color
+	environment._G.cpuAverage = cpuAverage
+	environment._G.cpuMax = cpuMax
+	environment._G.cpuTime = cpuTime
+	environment._G.CRC = CRC
+	environment._G.doAll = doAll
+	environment._G.dofile = dofile
+	environment._G.error = error
+	environment._G.getfenv = getfenv
+	environment._G.getmetatable = getmetatable
+	environment._G.hint = hint
+	environment._G.ipairs = ipairs
+	environment._G.IsValid = IsValid
+	environment._G.load = load
+	environment._G.localToWorld = localToWorld
+	environment._G.Material = Material
+	environment._G.Matrix = Matrix
+	environment._G.Mesh = Mesh
+	environment._G.next = next
+	environment._G.pairs = pairs
+	environment._G.pcall = pcall
+	environment._G.print = print
+	environment._G.printColor = printColor
+	environment._G.printConsole = printConsole
+	environment._G.Quaternion = Quaternion
+	environment._G.rawequal = rawequal
+	environment._G.rawget = rawget
+	environment._G.require = require
+	environment._G.requireAll = requireAll
+	environment._G.select = select
+	environment._G.setfenv = setfenv
+	environment._G.setmetatable = setmetatable
+	environment._G.tonumber = tonumber
+	environment._G.tostring = tostring
+	environment._G.type = type
+	environment._G.unpack = unpack
+	environment._G.Vector = Vector
+	environment._G.worldToLocal = worldToLocal
+	environment._G.xpcall = xpcall
+
+	environment._G.SERVER = SERVER
+	environment._G.CLIENT = CLIENT
+	environment._G.NOTIFY_HINT = NOTIFY_HINT
+	environment._G.NOTIFY_GENERIC = NOTIFY_GENERIC
+	environment._G.NOTIFY_ERROR = NOTIFY_ERROR
+
+	---HOOKS
+	local localHooks = {}
+	localHooks.__index = localHooks
+	localHooks.remove = hook.remove
+	localHooks.run	= hook.run
+
+	function localHooks.add(type, identifier, callback)
+		--We take care of net locally so we avoid using SF's native net hook.
+		if type:lower() == "net" then type = createID("luna_net") end
+
+		hook.add(type, createID(identifier), function(...)
+			local success = xpcall(callback, errorHandler, ...)
+
+			if not success then
+				hook.remove(type, createID(identifier))
+			end
+		end)
+	end
+
+	function localHooks.__call(_, type, identifier, callback)
+		localHooks.add(type, createID(identifier), callback)
+	end
+
+	environment.hook = {}
+	setmetatable(environment.hook, localHooks)
+
+	---TIMERS
+	environment.timer = {}
+	environment.timer.adjust 	= timer.adjust
+	environment.timer.canCreate	= timer.canCreate
+	environment.timer.exists	= timer.exists
+	environment.timer.getCount	= timer.getCount
+	environment.timer.getMax	= timer.getMax
+	environment.timer.pause		= timer.pause
+	environment.timer.remove	= timer.remove
+	environment.timer.repsLeft	= timer.repsLeft
+	environment.timer.start		= timer.start
+	environment.timer.stop		= timer.stop
+	environment.timer.timeLeft	= timer.timeLeft
+	environment.timer.unpause	= timer.unpause
+
+	function environment.timer.create(identifier, delay, reps, callback)
+		timer.create(createID(identifier), delay, reps, function()
+			local success = xpcall(callback, errorHandler)
+
+			if not success then
+				timer.remove(createID(identifier))
+			end
+		end)
+	end
+
+	function environment.timer.simple(delay, callback)
+		timer.simple(delay, function()
+			xpcall(callback, errorHandler)
+		end)
+	end
+
+	---CHANNELS
+	environment.channels = {}
+	environment.channels.canSend 		= channels.canSend
+	environment.channels.remove			= channels.remove
+	environment.channels.removePrivate	= channels.removePrivate
+	environment.channels.send			= channels.send
+	environment.channels.sendPrivate	= channels.sendPrivate
+
+	--Because channels can be used as communication between starfalls, that part does not get altered IDs
+	function environment.channels.listen(channelName, id, callback)
+		channels.listen(channelName, id, function(...)
+			local success = xpcall(callback, errorHandler, ...)
+
+			if not success then
+				channels.remove(channelName, id)
+			end
+		end)
+	end
+
+	function environment.channels.listenPrivate(id, callback)
+		channels.listenPrivate(id, function(...)
+			local success = xpcall(callback, errorHandler, ...)
+
+			if not success then
+				channels.removePrivate(id)
+			end
+		end)
+	end
+
+	---NETWORKING
+	environment.net = {}
+	environment.net.broadcast					= net.broadcast
+	environment.net.bytesLeft					= net.bytesLeft
+	environment.net.bytesWritten				= net.bytesWritten
+	environment.net.canSend						= net.canSend
+	environment.net.getDTVar					= net.getDTVar
+	environment.net.getMaxDTVarIndex			= net.getMaxDTVarIndex
+	environment.net.listenForAllDTVarChanges	= net.listenForAllDTVarChanges
+	environment.net.listenForDTVarChanges		= net.listenForDTVarChanges
+	environment.net.quotaMax					= net.quotaMax
+	environment.net.quotaUsed					= net.quotaUsed
+	environment.net.readAngle					= net.readAngle
+	environment.net.readBit						= net.readBit
+	environment.net.readBool					= net.readBool
+	environment.net.readData					= net.readData
+	environment.net.readDouble					= net.readDouble
+	environment.net.readEntity					= net.readEntity
+	environment.net.readFloat					= net.readFloat
+	environment.net.readInt						= net.readInt
+	environment.net.readMatrix					= net.readMatrix
+	environment.net.readNormal					= net.readNormal
+	environment.net.readString					= net.readString
+	environment.net.readTable					= net.readTable
+	environment.net.readType					= net.readType
+	environment.net.readUInt					= net.readUInt
+	environment.net.readVector					= net.readVector
+	environment.net.send						= net.send
+	environment.net.sendOmit					= net.sendOmit
+	environment.net.sendPAS						= net.sendPAS
+	environment.net.sendPVS						= net.sendPVS
+	environment.net.sendToServer				= net.sendToServer
+	environment.net.setDTVar					= net.setDTVar
+	environment.net.writeAngle					= net.writeAngle
+	environment.net.writeBit					= net.writeBit
+	environment.net.writeBool					= net.writeBool
+	environment.net.writeData					= net.writeData
+	environment.net.writeDouble					= net.writeDouble
+	environment.net.writeEntity					= net.writeEntity
+	environment.net.writeFloat					= net.writeFloat
+	environment.net.writeInt					= net.writeInt
+	environment.net.writeMatrix					= net.writeMatrix
+	environment.net.writeNormal					= net.writeNormal
+	environment.net.writeString					= net.writeString
+	environment.net.writeTable					= net.writeTable
+	environment.net.writeType					= net.writeType
+	environment.net.writeUInt					= net.writeUInt
+	environment.net.writeVector					= net.writeVector
+
+	function environment.net.start(ent, unreliable)
+		local canStart, reason = net.start(ent, unreliable)
+		if canStart then
+			if ent == nil or ent == ents.self() then net.writeString(ID) end
+			return canStart
+		else
+			return canStart, reason
+		end
+	end
+
+	if SERVER then
+		---CHAT
+		environment.chat = {}
+		environment.chat.botSay			= chat.botSay
+		environment.chat.botSayAlliance	= chat.botSayAlliance
+		environment.chat.canSay			= chat.canSay
+		environment.chat.canTell		= chat.canTell
+		environment.chat.interval		= chat.interval
+		environment.chat.nextSay		= chat.nextSay
+		environment.chat.nextTell		= chat.nextTell
+		environment.chat.say			= chat.say
+		environment.chat.tell			= chat.tell
+
+		local chatCallbacks = {}
+		function environment.chat.listen(callback, player)
+			chatCallbacks[callback] = function(...)
+				local success = xpcall(callback, errorHandler, ...)
+
+				if not success then
+					chat.stop(chatCallbacks[callback])
+				end
+			end
+
+			chat.listen(chatCallbacks[callback], player)
+		end
+
+		function environment.chat.stop(callback, player)
+			chat.stop(chatCallbacks[callback], player)
+		end
+
+		---WIRE
+		environment.wire = {}
+		environment.wire.create 			= wire.create
+		environment.wire.delete 			= wire.delete
+		environment.wire.getInputs			= wire.getInputs
+		environment.wire.getOutputs			= wire.getOutputs
+		environment.wire.PORT_TYPE_ANGLE	= PORT_TYPE_ANGLE
+		environment.wire.PORT_TYPE_ARRAY	= PORT_TYPE_ARRAY
+		environment.wire.PORT_TYPE_ENTITY	= PORT_TYPE_ENTITY
+		environment.wire.PORT_TYPE_NUMBER	= PORT_TYPE_NUMBER
+		environment.wire.PORT_TYPE_STRING	= PORT_TYPE_STRING
+		environment.wire.PORT_TYPE_TABLE	= PORT_TYPE_TABLE
+		environment.wire.PORT_TYPE_VECTOR	= PORT_TYPE_VECTOR
+		environment.wire.PORT_TYPE_WIRELINK	= PORT_TYPE_WIRELINK
+		environment.wire.ports 				= wire.ports
+		environment.wire.self 				= wire.self
+		environment.wire.setName 			= wire.setName
+
+		local inputs 		= {{}, {}, {}}
+		local outputs 		= {{}, {}, {}}
+		local inputNames 	= {}
+		local outputNames 	= {}
+
+		local validTypes = {
+			[wire.PORT_TYPE_ANGLE]		= true,
+			[wire.PORT_TYPE_ARRAY]		= true,
+			[wire.PORT_TYPE_ENTITY]		= true,
+			[wire.PORT_TYPE_NUMBER]		= true,
+			[wire.PORT_TYPE_STRING]		= true,
+			[wire.PORT_TYPE_TABLE]		= true,
+			[wire.PORT_TYPE_VECTOR]		= true,
+			[wire.PORT_TYPE_WIRELINK] 	= true,
+		}
+
+		local function checkValidIO(n, t, i, ioType)
+			if type(n) ~= "string" then
+				error("Non-string "..ioType.." name at index "..i..": "..tostring(n), 2)
+			end
+
+			if (inputNames[n] and ioType == "input") or (outputNames[n] and ioType == "output") then
+				error("Duplicate "..ioType.." name : "..n, 2)
+			end
+
+			if string.find(n, "%W") ~= nil or utf8.sub(n, 1, 1) ~= utf8.sub(n, 1, 1):upper() or tonumber(utf8.sub(n, 1, 1)) ~= nil then
+				error("Invalid "..ioType.." name at index "..i.." (must be alphanumeric starting with upper-case)", 2)
+			end
+
+			if type(t) ~= "string" then
+				error("Non-string "..ioType.." type at index "..i..": "..tostring(t), 2)
+			end
+
+			if not validTypes[t:upper()] then
+				error("Invalid/unsupported "..ioType.." type at index "..i..": "..t, 2)
+			end
+		end
+
+		local function updateIO()
+			wire.createInputs(unpack(inputs))
+			wire.createOutputs(unpack(outputs))
+		end
+
+		function environment.wire.createInputs(names, types, descriptions)
+			descriptions = descriptions or {}
+
+			if #names ~= #types then
+				error("Table lengths not equal", 1)
+			end
+
+			if #inputs[1] + #names > 64 then
+				error("Max number of inputs reached, 64 max", 1)
+			end
+
+			for i = 1, #names do
+				checkValidIO(names[i], types[i], i, "input")
+				table.insert(inputs[1], names[i])
+				table.insert(inputs[2], types[i])
+				inputNames[names[i]] = true
+
+				if descriptions[i] ~= nil and type(descriptions[i]) ~= "string" then
+					error("Invalid description type at index "..i..": "..tostring(descriptions[i]), 1)
+				end
+
+				table.insert(inputs[3], descriptions[i])
+				updateIO()
+			end
+		end
+
+		function environment.wire.createOutputs(names, types, descriptions)
+			if #names ~= #types then
+				error("Table lengths not equal", 1)
+			end
+
+			if #outputs[1] + #names > 64 then
+				error("Max number of outputs reached, 64 max", 1)
+			end
+
+			for i = 1, #names do
+				checkValidIO(names[i], types[i], i, "output")
+				table.add(outputs[1], names[i])
+				table.add(outputs[2], types[i])
+				outputNames[names[i]] = true
+
+				if type(descriptions[i]) ~= nil then
+					error("Invalid description type at index "..i..": "..tostring(descriptions[i]), 1)
+				end
+
+				table.add(outputs[3], descriptions[i])
+				updateIO()
+			end
+		end
+
+		function environment.wire.addOutputCallback(wirelink, id, callback)
+			checkType(wirelink, "Wirelink", 1, 1)
+
+			return wirelink:addOutputCallback(createID(id), function(...)
+				local success = xpcall(callback, errorHandler, ...)
+
+				if not success then
+					wirelink:removeOutputCallback(id)
+				end
+			end)
+		end
+	end
+
+	for libraryName, libraryTable in pairs(libraries.environment) do
+		environment[libraryName] = libraryTable
+	end
+
+	--Creating the environment
+	environment.__index = environment._G
+	local localEnvironment = {}
+
+	--Adding all allowed libraries into the environment
+	for libraryName, libraryTable in pairs(getfenv()) do
+		if not libraries.environmentBlacklist[libraryName] then
+			environment[libraryName] = libraryTable
+			localEnvironment[libraryName] = libraryTable
+		end
+	end
+
+	--Adding all custom libraries in the environment
+	for libraryName, libraryTable in pairs(environment) do
+		if libraryName ~= "__index" then
+			localEnvironment[libraryName] = libraryTable
+		end
+	end
+
+
+	return setmetatable(localEnvironment, environment)
+end

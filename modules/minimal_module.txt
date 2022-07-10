@@ -1,0 +1,3 @@
+--@name Luna | Minimal Module
+--@author The17thDoctor
+--@class none
