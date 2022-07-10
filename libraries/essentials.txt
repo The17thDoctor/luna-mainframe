@@ -58,38 +58,125 @@ settingType = {
 	WORD = "WORD",
 }
 
-function mainframe.addSetting(id, name, type, default, extras)
-	checkType(id, "string", "#1")
-	checkType(name, "string", "#2")
-	type = type:upper()
-	if settingType[type] == nil then error("Unknown settings type", 1) end
-	if type == "NUMBER" and type(default) ~= "number" then
+--Adds a mainframe setting, this setting will be automatically saved to luna's save file.
+function mainframe.addSetting(name, sType, default, extras)
+	checkType(name, "string", "name")
+	sType = sType:upper()
+	extras = extras or {}
+	if sType[type] == nil then error("Unknown settings type", 1) end
+	if sType == "NUMBER" and type(default) ~= "number" then
 		error("Invalid default value (expected number, got "..type(default)..")", 1)
-	elseif (type == "WORD" or type == "STRING") and type(default) ~= "string" then
+	elseif (sType == "WORD" or sType == "STRING") and type(default) ~= "string" then
 		error("Invalid default value (expected string, got "..type(default)..")", 1)
-	elseif type == "BOOLEAN" and type(default) ~= "boolean" then
+	elseif sType == "BOOLEAN" and type(default) ~= "boolean" then
 		error("Invalid default value (expected boolean, got "..type(default)..")", 1)
 	end
 
-	if type == "NUMBER" then
-		if extras.min ~= nil and default < extras.min then
+	if sType == "NUMBER" then
+		if extras.min ~= nil then
+			checkType(extras.min, "number", "extras.min")
+		end
+
+		if extras.max ~= nil then
+			checkType(extras.max, "number", "extras.max")
+		end
+
+		if extras.choices ~= nil then
+			if extras.min ~= nil or extras.max ~= nil then
+				error("Cannot have a choice and a range", 1)
+			elseif not extras.choices[default] then
+				error("Default value not part of the choices", 1)
+			end
+		elseif extras.min ~= nil and default < extras.min then
 			error("Default value under the minimum set value", 1)
 		elseif extras.max ~= nil and default > extras.max then
 			error("Default value over the maximum set value", 1)
 		end
-	elseif type == "WORD" then
-		if extras.length ~= nil and utf8.len(default) > extras.length then
+	elseif sType == "WORD" then
+		if extras.length ~= nil then
+			checkType(extras.length, "number", "extras.length")
+		end
+
+		if extras.choices ~= nil then
+			if extras.length ~= nil then
+				error("Cannot have a length limit and a choice", 1)
+			elseif not extras.choices[default] then
+				error("Default value not part of the choices", 1)
+			end
+		elseif extras.length ~= nil and utf8.len(default) > extras.length then
 			error("Default value over the maximum length", 1)
 		elseif #default:explode("%s", true) > 1 then
 			error("Default value contains multiple words (change the setting type to STRING ?)", 1)
 		end
-	elseif type == "STRING" then
-		if extras.length ~= nil and utf8.len(default) > extras.length then
+	elseif sType == "STRING" then
+		if extras.length ~= nil then
+			checkType(extras.length, "number", "extras.length")
+		end
+
+		if extras.choices ~= nil then
+			if extras.length ~= nil then
+				error("Cannot have a length limit and a choice", 1)
+			elseif not extras.choices[default] then
+				error("Default value not part of the choices", 1)
+			end
+		elseif extras.length ~= nil and utf8.len(default) > extras.length then
 			error("Default value over the maximum length", 1)
 		end
 	end
 
-	mainframe.settings[id] = {name, type, default, extras}
+	mainframe.settings[name] = {
+		name = name,
+		type = sType,
+		default = default,
+		extras = extras,
+		value = default
+	}
+end
+
+--Returns a setting given its identifier
+function mainframe.getSetting(name)
+	return mainframe.settings[name]
+end
+
+function mainframe.setSetting(name, value)
+	if mainframe.settings[name] == nil then error("Unknown setting name '"..name.."'", 1) end
+
+	local setting = mainframe.settings[name]
+	local sType, extras = setting.type, setting.extras
+
+	checkType(value, type(setting.default), "value")
+
+	if sType == settingType.NUMBER then
+		local min, max = extras.min or -math.huge, extras.max or math.huge
+		if extras.choices ~= nil then
+			if not extras.choices[value] then
+				return false, "value not within choices"
+			end
+		elseif value < min or value > max then
+			return false, "value out of bounds"
+		end
+	elseif sType == settingType.STRING then
+		local length = extras.length or math.huge
+		if utf8.len(value) > length then
+			return false, "string too long"
+		elseif extras.choices ~= nil then
+			if not extras.choices[value] then
+				return false, "value not within choices"
+			end
+		end
+	elseif sType == settingType.WORD then
+		local length = extras.length or math.huge
+		if utf8.len(value) > length then
+			return false, "word too long"
+		elseif extras.choices ~= nil then
+			if not extras.choices[value] then
+				return false, "value not within choices"
+			end
+		end
+	end
+
+	mainframe.settings[name].value = value
+	return true
 end
 
 --Lastly we're adding all written functions into the environment.
