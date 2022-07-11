@@ -45,12 +45,76 @@ end
 
 ---MAINFRAME FUNCTIONS
 
----WHITELIST & PERMISSIONS
-
 if SERVER then
-	mainframe.whitelist = {}
-	mainframe.blacklist = {}
-	mainframe.permalist = {}
+	---WHITELIST & PERMISSIONS
+
+	mainframe.whitelist		= {}
+	mainframe.blacklist		= {}
+	mainframe.permalist		= {}
+	mainframe.permissions 	= {}
+
+	--Registers a new permission to the permission tree
+	function mainframe.registerPermission(path, allowedByDefault)
+		if utf8.len(path) ~= string.len(path) then error("Permission path must be ASCII", 1) end
+		path = path:lower()
+		local nodes = path:explode(".")
+
+		if mainframe.permissions[path] ~= nil then
+			return false, "permission already existing"
+		end
+
+		local currentPermission = nodes[1]
+		for i = 1, #nodes-1 do
+			if mainframe.permissions[currentPermission] == nil then
+				error("Missing parent permission '"..currentPermission.."'", 1)
+			end
+
+			currentPermission = currentPermission.."."..nodes[i+1]
+		end
+
+		mainframe.permissions[path] = allowedByDefault
+	end
+
+	--Returns the permissions granted to a specific player or false if he's part of the blacklist or not in any whitelist
+	function mainframe.getPermissions(player)
+		if not IsValid(player) or not player:isPlayer() then error("Invalid player entity", 1) end
+
+		if player == ents.owner() then
+			local permissionsTable = {}
+			for k in pairs(mainframe.permissions) do
+				permissionsTable[k] = true
+			end
+
+			return permissionsTable
+		end
+
+		if not mainframe.blacklist[player:steamID()] then
+			return mainframe.permalist[player:steamID()] or mainframe.whitelist[player:steamID()] or false
+		else
+			return false
+		end
+	end
+
+	--Returns whether a player has been granted a specific permission
+	function mainframe.isPermittedForPlayer(player, permission)
+		if mainframe.permissions[permission] == nil then error("Unknown permission '"..permission.."'", 1) end
+		if not IsValid(player) or not player:isPlayer() then error("Invalid player entity", 1) end
+		if player == ents.owner() then return true end
+
+		local playerPermissions = mainframe.getPermissions(player)
+
+		if playerPermissions then
+			local existingPermission = playerPermissions[permission]
+
+			if existingPermission ~= nil then
+				return existingPerm
+			else
+				return mainframe.permissions[permission]
+			end
+		else
+			return false
+		end
+	end
 
 	---SAVE FILE
 
@@ -120,7 +184,11 @@ if SERVER then
 				mainframe.settings	= data.settings or mainframe.settings
 				return true
 			else
-				return false, "json data malformed"
+				if mainframe.saveFile() then
+					return false, "json data malformed, data overwritten"
+				else
+					return false, "json data malformed, unable to overwrite data"
+				end
 			end
 		else
 			return false, reason
