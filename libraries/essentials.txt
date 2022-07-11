@@ -47,169 +47,231 @@ end
 
 ---WHITELIST & PERMISSIONS
 
-mainframe.whitelist = {}
-mainframe.blacklist = {}
-mainframe.permalist = {}
+if SERVER then
+	mainframe.whitelist = {}
+	mainframe.blacklist = {}
+	mainframe.permalist = {}
 
----SAVE FILE
+	---SAVE FILE
 
---Saves all settings, whitelists and additional datas.
-local function createFile()
+	local filename = "luna_savefile.txt"
 
-end
+	--Saves all settings, whitelists and additional datas.
+	local function createFile()
+		local file = io.open(filename, "w")
+		if file ~= nil then
+			file:close()
+			return true
+		end
 
-function mainframe.saveFile()
-
-end
-
-function mainframe.loadFile()
-
-end
-
----SETTINGS
-
-mainframe.settings 	= {}
-
-settingType = {
-	NUMBER = "NUMBER",
-	STRING = "STRING",
-	BOOLEAN = "BOOLEAN",
-	WORD = "WORD",
-}
-
---Adds a mainframe setting, this setting will be automatically saved to luna's save file
-function mainframe.addSetting(name, sType, default, extras)
-	checkType(name, "string", "name")
-	sType = sType:upper()
-	extras = extras or {}
-	if sType[type] == nil then error("Unknown settings type", 1) end
-	if sType == "NUMBER" and type(default) ~= "number" then
-		error("Invalid default value (expected number, got "..type(default)..")", 1)
-	elseif (sType == "WORD" or sType == "STRING") and type(default) ~= "string" then
-		error("Invalid default value (expected string, got "..type(default)..")", 1)
-	elseif sType == "BOOLEAN" and type(default) ~= "boolean" then
-		error("Invalid default value (expected boolean, got "..type(default)..")", 1)
+		return false
 	end
 
-	if sType == "NUMBER" then
-		if extras.min ~= nil then
-			checkType(extras.min, "number", "extras.min")
-		end
-
-		if extras.max ~= nil then
-			checkType(extras.max, "number", "extras.max")
-		end
-
-		if extras.choices ~= nil then
-			if extras.min ~= nil or extras.max ~= nil then
-				error("Cannot have a choice and a range", 1)
-			elseif not extras.choices[default] then
-				error("Default value not part of the choices", 1)
+	local function checkForFile()
+		if not files.exists(filename) then
+			if not createFile() then
+				return false
 			end
-		elseif extras.min ~= nil and default < extras.min then
-			error("Default value under the minimum set value", 1)
-		elseif extras.max ~= nil and default > extras.max then
-			error("Default value over the maximum set value", 1)
-		end
-	elseif sType == "WORD" then
-		if extras.length ~= nil then
-			checkType(extras.length, "number", "extras.length")
 		end
 
-		if extras.choices ~= nil then
-			if extras.length ~= nil then
-				error("Cannot have a length limit and a choice", 1)
-			elseif not extras.choices[default] then
-				error("Default value not part of the choices", 1)
-			end
-		elseif extras.length ~= nil and utf8.len(default) > extras.length then
-			error("Default value over the maximum length", 1)
-		elseif #default:explode("%s", true) > 1 then
-			error("Default value contains multiple words (change the setting type to STRING ?)", 1)
-		end
-	elseif sType == "STRING" then
-		if extras.length ~= nil then
-			checkType(extras.length, "number", "extras.length")
+		return true
+	end
+
+	function mainframe.saveFile()
+		if not checkForFile() then
+			return false, "unable to create a save file"
 		end
 
-		if extras.choices ~= nil then
-			if extras.length ~= nil then
-				error("Cannot have a length limit and a choice", 1)
-			elseif not extras.choices[default] then
-				error("Default value not part of the choices", 1)
-			end
-		elseif extras.length ~= nil and utf8.len(default) > extras.length then
-			error("Default value over the maximum length", 1)
+		local file, reason = io.open(filename, "w")
+
+		if file ~= nil then
+			local data = {}
+			data.whitelist = mainframe.whitelist
+			data.blacklist = mainframe.blacklist
+			data.permalist = mainframe.permalist
+			data.settings  = mainframe.settings
+
+			local jsonData = json.serialize(data, true)
+			file:write(jsonData)
+			file:close()
+			return true
+		else
+			return false, reason
 		end
 	end
 
-	mainframe.settings[name] = {
-		name = name,
-		type = sType,
-		default = default,
-		extras = extras,
-		value = default
+	function mainframe.loadFile()
+		if not checkForFile() then
+			return false, "unable to create a save file"
+		end
+
+		local file, reason = io.open(filename, "r")
+
+		if file ~= nil then
+			local jsonData = file:read("*a")
+			file:close()
+
+			local success, data = pcall(json.deserialize, jsonData)
+
+			if success then
+				mainframe.whitelist = data.whitelist or mainframe.whitelist
+				mainframe.blacklist = data.blacklist or mainframe.blacklist
+				mainframe.permalist = data.permalist or mainframe.permalist
+				mainframe.settings	= data.settings or mainframe.settings
+				return true
+			else
+				return false, "json data malformed"
+			end
+		else
+			return false, reason
+		end
+	end
+
+	---SETTINGS
+
+	mainframe.settings 	= {}
+
+	settingType = {
+		NUMBER = "NUMBER",
+		STRING = "STRING",
+		BOOLEAN = "BOOLEAN",
+		WORD = "WORD",
 	}
-end
 
---Returns a setting given its identifier
-function mainframe.getSetting(name)
-	return mainframe.settings[name]
-end
-
---Sets a setting to the given value, it will check for the validity of the value
-function mainframe.setSetting(name, value)
-	if mainframe.settings[name] == nil then error("Unknown setting name '"..name.."'", 1) end
-
-	local setting = mainframe.settings[name]
-	local sType, extras = setting.type, setting.extras
-
-	checkType(value, type(setting.default), "value")
-
-	if sType == settingType.NUMBER then
-		local min, max = extras.min or -math.huge, extras.max or math.huge
-		if extras.choices ~= nil then
-			if not extras.choices[value] then
-				return false, "value not within choices"
-			end
-		elseif value < min or value > max then
-			return false, "value out of bounds"
+	--Adds a mainframe setting, this setting will be automatically saved to luna's save file
+	function mainframe.addSetting(name, sType, default, extras)
+		checkType(name, "string", "name")
+		sType = sType:upper()
+		extras = extras or {}
+		if sType[type] == nil then error("Unknown settings type", 1) end
+		if sType == "NUMBER" and type(default) ~= "number" then
+			error("Invalid default value (expected number, got "..type(default)..")", 1)
+		elseif (sType == "WORD" or sType == "STRING") and type(default) ~= "string" then
+			error("Invalid default value (expected string, got "..type(default)..")", 1)
+		elseif sType == "BOOLEAN" and type(default) ~= "boolean" then
+			error("Invalid default value (expected boolean, got "..type(default)..")", 1)
 		end
-	elseif sType == settingType.STRING then
-		local length = extras.length or math.huge
-		if utf8.len(value) > length then
-			return false, "string too long"
-		elseif extras.choices ~= nil then
-			if not extras.choices[value] then
-				return false, "value not within choices"
+
+		if sType == "NUMBER" then
+			if extras.min ~= nil then
+				checkType(extras.min, "number", "extras.min")
+			end
+
+			if extras.max ~= nil then
+				checkType(extras.max, "number", "extras.max")
+			end
+
+			if extras.choices ~= nil then
+				if extras.min ~= nil or extras.max ~= nil then
+					error("Cannot have a choice and a range", 1)
+				elseif not extras.choices[default] then
+					error("Default value not part of the choices", 1)
+				end
+			elseif extras.min ~= nil and default < extras.min then
+				error("Default value under the minimum set value", 1)
+			elseif extras.max ~= nil and default > extras.max then
+				error("Default value over the maximum set value", 1)
+			end
+		elseif sType == "WORD" then
+			if extras.length ~= nil then
+				checkType(extras.length, "number", "extras.length")
+			end
+
+			if extras.choices ~= nil then
+				if extras.length ~= nil then
+					error("Cannot have a length limit and a choice", 1)
+				elseif not extras.choices[default] then
+					error("Default value not part of the choices", 1)
+				end
+			elseif extras.length ~= nil and utf8.len(default) > extras.length then
+				error("Default value over the maximum length", 1)
+			elseif #default:explode("%s", true) > 1 then
+				error("Default value contains multiple words (change the setting type to STRING ?)", 1)
+			end
+		elseif sType == "STRING" then
+			if extras.length ~= nil then
+				checkType(extras.length, "number", "extras.length")
+			end
+
+			if extras.choices ~= nil then
+				if extras.length ~= nil then
+					error("Cannot have a length limit and a choice", 1)
+				elseif not extras.choices[default] then
+					error("Default value not part of the choices", 1)
+				end
+			elseif extras.length ~= nil and utf8.len(default) > extras.length then
+				error("Default value over the maximum length", 1)
 			end
 		end
-	elseif sType == settingType.WORD then
-		local length = extras.length or math.huge
-		if utf8.len(value) > length then
-			return false, "word too long"
-		elseif extras.choices ~= nil then
-			if not extras.choices[value] then
-				return false, "value not within choices"
+
+		mainframe.settings[name] = {
+			name = name,
+			type = sType,
+			default = default,
+			extras = extras,
+			value = default
+		}
+	end
+
+	--Returns a setting given its identifier
+	function mainframe.getSetting(name)
+		return mainframe.settings[name]
+	end
+
+	--Sets a setting to the given value, it will check for the validity of the value
+	function mainframe.setSetting(name, value)
+		if mainframe.settings[name] == nil then error("Unknown setting name '"..name.."'", 1) end
+
+		local setting = mainframe.settings[name]
+		local sType, extras = setting.type, setting.extras
+
+		checkType(value, type(setting.default), "value")
+
+		if sType == settingType.NUMBER then
+			local min, max = extras.min or -math.huge, extras.max or math.huge
+			if extras.choices ~= nil then
+				if not extras.choices[value] then
+					return false, "value not within choices"
+				end
+			elseif value < min or value > max then
+				return false, "value out of bounds"
 			end
+		elseif sType == settingType.STRING then
+			local length = extras.length or math.huge
+			if utf8.len(value) > length then
+				return false, "string too long"
+			elseif extras.choices ~= nil then
+				if not extras.choices[value] then
+					return false, "value not within choices"
+				end
+			end
+		elseif sType == settingType.WORD then
+			local length = extras.length or math.huge
+			if utf8.len(value) > length then
+				return false, "word too long"
+			elseif extras.choices ~= nil then
+				if not extras.choices[value] then
+					return false, "value not within choices"
+				end
+			end
+		end
+
+		mainframe.settings[name].value = value
+		return true
+	end
+
+	--Sets all settings back to their default values
+	function mainframe.resetAllSettings()
+		for k, v in pairs(mainframe.settings) do
+			v.value = v.default
 		end
 	end
 
-	mainframe.settings[name].value = value
-	return true
-end
-
---Sets all settings back to their default values
-function mainframe.resetAllSettings()
-	for k, v in pairs(mainframe.settings) do
-		v.value = v.default
+	--Sets a setting back to its default value given its name
+	function mainframe.resetSetting(name)
+		if mainframe.settings[name] == nil then error("Unknown setting", 1) end
+		mainframe.settings[name].value = mainframe.settings[name].default
 	end
-end
-
---Sets a setting back to its default value given its name
-function mainframe.resetSetting(name)
-	if mainframe.settings[name] == nil then error("Unknown setting", 1) end
-	mainframe.settings[name].value = mainframe.settings[name].default
 end
 
 
