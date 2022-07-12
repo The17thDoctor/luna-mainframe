@@ -392,6 +392,20 @@ function mfchat.parseMessage(message, ...)
 						break
 					end
 				end
+
+				if components[1] == "e" then
+					local id, entClass = currentValue:index(), currentValue:class()
+					local formattedTable = mfchat.parseMessage("{color}[{s green}] {s}", previousColor, tostring(index), entClass)
+
+					for i = 1, #formattedTable do
+						messageTable[#messageTable+1] = formattedTable[i]
+					end
+				elseif components[1] == "E" then
+					messageTable[#messageTable+1] = currentValue:class()
+				else
+					local name =  modules.lookupName(currentValue:class()) or currentValue:class()
+					messageTable[#messageTable+1] = name
+				end
 				count = count + 1
 			elseif components[1] == "p" or components[1] == "P" then
 				checkType(currentValue, "Player", "value #"..count)
@@ -445,5 +459,3 @@ function mfchat.parseMessage(message, ...)
 
 	return messageTable
 end
-
-printColor(unpack(mfchat.parseMessage("{d {s}}", "02", 1)))
