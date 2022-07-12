@@ -53,6 +53,105 @@ if SERVER then
 	mainframe.permalist		= {}
 	mainframe.permissions 	= {}
 
+	local function checkValidPlayer(player)
+		if not IsValid(player) or not player:isPlayer() then error("Invalid player entity", 2) end
+	end
+
+	--Returns whether a player is whitelisted, always returns true for the owner.
+	function mainframe.isWhitelisted(player)
+		checkValidPlayer(player)
+		if player == ents.owner() then return true end
+		return mainframe.whitelist[player:steamID()] ~= nil
+	end
+
+	--Returns whether a player is blacklisted, always returns false for the owner.
+	function mainframe.isBlacklisted(player)
+		checkValidPlayer(player)
+		if player == ents.owner() then return false end
+		return mainframe.blacklist[player:steamID()] ~= nil
+	end
+
+	--Returns whether a player is permalisted, always returns true for the owner.
+	function mainframe.isPermalisted(player)
+		checkValidPlayer(player)
+		if player == ents.owner() then return true end
+		return mainframe.permalist[player:steamID()] ~= nil
+	end
+
+	--Adds a player to the whitelist..
+	function mainframe.addToWhitelist(player)
+		checkValidPlayer(player)
+		if player == ents.owner() then return false, "can't add the owner to the whitelist" end
+		if mainframe.isWhitelisted(player) then return false, "player already in the whitelist" end
+		if mainframe.isPermalisted(player) then return false, "player already in the permalist" end
+
+		mainframe.blacklist[player:steamID()] = nil
+		mainframe.whitelist[player:steamID()] = {
+			added = os.time()
+		}
+
+		return true
+	end
+
+	--Removes a player from the whitelist..
+	function mainframe.removeFromWhitelist(player)
+		checkValidPlayer(player)
+		if player == ents.owner() then return false, "can't remove owner from the whitelist" end
+		if not mainframe.isWhitelisted(player) then return false, "player not in the whitelist" end
+
+		mainframe.whitelist[player:steamID()] = nil
+		return true
+	end
+
+	--Adds a player to the blacklist..
+	function mainframe.addToBlacklist(player)
+		checkValidPlayer(player)
+		if player == ents.owner() then return false, "can't add the owner to the blacklist" end
+		if mainframe.isBlacklisted(player) then return false, "player already in the blacklist" end
+
+		mainframe.whitelist[player:steamID()] = nil
+		mainframe.permalist[player:steamID()] = nil
+		mainframe.blacklist[player:steamID()] = os.time()
+		mainframe.saveFile()
+		return true
+	end
+
+	--Removes a player from the blacklist..
+	function mainframe.removeFromBlacklist(player)
+		checkValidPlayer(player)
+		if not mainframe.isBlacklisted(player) then return false, "player not in the blacklist" end
+
+		mainframe.blacklist[player:steamID()] = nil
+		mainframe.saveFile()
+		return true
+	end
+
+	--Adds a player to the permalist..
+	function mainframe.addToPermalist(player)
+		checkValidPlayer(player)
+		if player == ents.owner() then return false, "can't add the owner to the permalist" end
+		if mainframe.isPermalisted(player) then return false, "player already in the permalist" end
+
+		mainframe.whitelist[player:steamID()] = nil
+		mainframe.blacklist[player:steamID()] = nil
+		mainframe.permalist[player:steamID()] = {
+			added = os.time()
+		}
+		mainframe.saveFile()
+		return true
+	end
+
+	--Removes a player from the permalist..
+	function mainframe.removeFromPermalist(player)
+		checkValidPlayer(player)
+		if player == ents.owner() then return false, "can't remove the owner from the permalist" end
+		if not mainframe.isPermalisted(player) then return false, "player not in the permalist" end
+
+		mainframe.permalist[player:steamID()] = {}
+		mainframe.saveFile()
+		return true
+	end
+
 	--Registers a new permission to the permission tree
 	function mainframe.registerPermission(path, allowedByDefault)
 		if utf8.len(path) ~= string.len(path) then error("Permission path must be ASCII", 1) end
@@ -77,7 +176,7 @@ if SERVER then
 
 	--Returns the permissions granted to a specific player or false if he's part of the blacklist or not in any whitelist
 	function mainframe.getPermissions(player)
-		if not IsValid(player) or not player:isPlayer() then error("Invalid player entity", 1) end
+		checkValidPlayer(player)
 
 		if player == ents.owner() then
 			local permissionsTable = {}
@@ -98,7 +197,7 @@ if SERVER then
 	--Returns whether a player has been granted a specific permission
 	function mainframe.isPermittedForPlayer(player, permission)
 		if mainframe.permissions[permission] == nil then error("Unknown permission '"..permission.."'", 1) end
-		if not IsValid(player) or not player:isPlayer() then error("Invalid player entity", 1) end
+		checkValidPlayer(player)
 		if player == ents.owner() then return true end
 
 		local playerPermissions = mainframe.getPermissions(player)
@@ -150,7 +249,6 @@ if SERVER then
 
 		if file ~= nil then
 			local data = {}
-			data.whitelist = mainframe.whitelist
 			data.blacklist = mainframe.blacklist
 			data.permalist = mainframe.permalist
 			data.settings  = mainframe.settings
@@ -178,7 +276,6 @@ if SERVER then
 			local success, data = pcall(json.deserialize, jsonData)
 
 			if success then
-				mainframe.whitelist = data.whitelist or mainframe.whitelist
 				mainframe.blacklist = data.blacklist or mainframe.blacklist
 				mainframe.permalist = data.permalist or mainframe.permalist
 				mainframe.settings	= data.settings or mainframe.settings
@@ -193,6 +290,12 @@ if SERVER then
 		else
 			return false, reason
 		end
+	end
+
+	function mainframe.clearFile()
+		mainframe.blacklist = {}
+		mainframe.permalist = {}
+		return mainframe.clearAllSettings()
 	end
 
 	---SETTINGS
@@ -329,16 +432,19 @@ if SERVER then
 	end
 
 	--Sets all settings back to their default values
-	function mainframe.resetAllSettings()
+	function mainframe.clearAllSettings()
 		for k, v in pairs(mainframe.settings) do
 			v.value = v.default
 		end
+
+		return mainframe.saveFile()
 	end
 
 	--Sets a setting back to its default value given its name
-	function mainframe.resetSetting(name)
+	function mainframe.clearSetting(name)
 		if mainframe.settings[name] == nil then error("Unknown setting", 1) end
 		mainframe.settings[name].value = mainframe.settings[name].default
+		return mainframe.saveFile()
 	end
 end
 
