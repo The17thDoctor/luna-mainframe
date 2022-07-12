@@ -11,175 +11,91 @@
 
 if CLIENT then return end
 
-chat.color = {
-	prefix = Color(71, 108, 207),
-	blue = Color(100, 150, 255),
-	red = Color(255, 100, 75),
-	green = Color(100, 255, 100),
-	yellow = Color(255, 225, 100),
-	white = Color(235, 235, 235),
-	gray = Color(175, 175, 175),
-	orange = Color(255, 160, 75),
-}
+mfchat = {} --This is the main chat library table.
 
-local commands = {}
+--[[
+	Chat Formatting codes
+	These chat formatting codes are applied for all 3 mainframe-integrated chat functions
+	and more generally by any function using mfchat.parseMessage()
 
-local function parsePrintTable(...)
-	local elements = {...}
-	local finalTable = {}
+	All formatting codes must be enclosed by \\{<code>}
 
-	for i = 1, #elements do
-		local element = elements[i]
-		local eType = type(element)
+	Currently existing formatting codes:
 
-		if type(element) == "Player" then
-			finalTable[#finalTable+1] = element:getTeamColor()
-			finalTable[#finalTable+1] = element:name()
-			finalTable[#finalTable+1] = chat.color.white
-		elseif type(element) == "Entity" then
-			finalTable[#finalTable+1] = chat.color.green
-			finalTable[#finalTable+1] = tostring(element)
-			finalTable[#finalTable+1] = chat.color.white
-		elseif type(element) == "table" then
-			if getmetatable(element) == "Color" then
-				finalTable[#finalTable+1] = element
-			else
-				for i = 1, #element do
-					finalTable[#finalTable+1] = element[i]
-				end
-			end
-		elseif type(element) == "boolean" then
-			if element then
-				finalTable[#finalTable+1] = chat.color.green
-			else
-				finalTable[#finalTable+1] = chat.color.red
-			end
+	d <x> <y> : Any number, <x> is the number of decimals, <y> is the number format used.
+	If x or y is not given, lua rules apply for each.
+	EXAMPLES :
+		\\{d 3}		: 3.52682 -> 3.53
+		\\{d s}		: 1000000 -> 1 000 000
+		\\{d p}		: 0.156   -> 15.6%
+		\\{d 2 p}	: 0.15832 -> 15.83%
+		\\{d t}		: 3031    -> 50m31s
+		\\{d T}		: 3031	  -> 50 minutes 31 seconds
 
-			finalTable[#finalTable+1] = tostring(element)
-		elseif type(element) == "Vector" then
-			finalTable[#finalTable+1] = chat.color.white
-			finalTable[#finalTable+1] = "("
-			finalTable[#finalTable+1] = chat.color.blue
-			finalTable[#finalTable+1] = tostring(math.round(element.x, 2))
-			finalTable[#finalTable+1] = chat.color.white
-			finalTable[#finalTable+1] = ", "
-			finalTable[#finalTable+1] = chat.color.blue
-			finalTable[#finalTable+1] = tostring(math.round(element.y, 2))
-			finalTable[#finalTable+1] = chat.color.white
-			finalTable[#finalTable+1] = ", "
-			finalTable[#finalTable+1] = chat.color.blue
-			finalTable[#finalTable+1] = tostring(math.round(element.z, 2))
-			finalTable[#finalTable+1] = chat.color.white
-			finalTable[#finalTable+1] = ")"
-			finalTable[#finalTable+1] = chat.color.white
-		elseif type(element) == "Angle" then
-			finalTable[#finalTable+1] = chat.color.white
-			finalTable[#finalTable+1] = "("
-			finalTable[#finalTable+1] = chat.color.green
-			finalTable[#finalTable+1] = tostring(math.round(element.p, 2))
-			finalTable[#finalTable+1] = chat.color.white
-			finalTable[#finalTable+1] = ", "
-			finalTable[#finalTable+1] = chat.color.green
-			finalTable[#finalTable+1] = tostring(math.round(element.y, 2))
-			finalTable[#finalTable+1] = chat.color.white
-			finalTable[#finalTable+1] = ", "
-			finalTable[#finalTable+1] = chat.color.green
-			finalTable[#finalTable+1] = tostring(math.round(element.r, 2))
-			finalTable[#finalTable+1] = chat.color.white
-			finalTable[#finalTable+1] = ")"
-			finalTable[#finalTable+1] = chat.color.white
-		elseif type(element) == "string" then
-			local splitStr = element:explode("%b{}", true)
-			local colorCodes = string.gmatch(element, "%b{}")
 
-			for colorCode in colorCodes do
-				finalTable[#finalTable+1] = splitStr[1]
-				table.remove(splitStr, 1)
+	s <color> : Any string, equivalent to lua concatenation.
+	If a color name or a custom color is supplied, all of that text will be put in that color.
+	EXAMPLES :
+		\\{s}                   : My Awesome Text -> ..My Awesome Text..
+		\\{s red}               : My Awesome Text -> ..\\{red}My Awesome Text\\{white}..
+		\\{s color <r> <g> <b>} : My Awesome Text -> ..\\{color <r> <g> <b>}My Awesome Text\\{white}..
 
-				color = colorCode:explode("[{}]", true)[2]
-				if chat.color[color] ~= nil then
-					finalTable[#finalTable+1] = chat.color[color]
-				else
-					finalTable[#finalTable+1] = colorCode
-				end
-			end
 
-			finalTable[#finalTable+1] = splitStr[1]
-			finalTable[#finalTable+1] = chat.color.white
-		elseif type(element) == "number" then
-			finalTable[#finalTable+1] = chat.color.blue
-			finalTable[#finalTable+1] = tostring(element)
-			finalTable[#finalTable+1] = chat.color.white
-		else
-			error("Unhandled variable type : "..type(element), 2)
-		end
+	a <x> : Any angle, <x> is the number of decimals for each component.
+	If <x> is not given, lua rules apply.
+	EXAMPLES :
+		\\{a}   : Angle(3.5892, 5.325, 1.2) -> Angle(3.5892, 5.325, 1.2)
+		\\{a 3} : Angle(3.5982, 5.325, 1.2) -> Angle(3.598, 5.325, 1.200)
+
+
+	v <x> : Any vector, <x> is the number of decimals for each component.
+	If <x> is not given, lua rules apply.
+	EXAMPLES :
+		\\{v}   : Vector(3.5892, 5.325, 1.2) -> Vector(3.5892, 5.325, 1.2)
+		\\{v 3} : Vector(3.5982, 5.325, 1.2) -> Vector(3.598, 5.325, 1.200)
+
+
+	<color> : Sets the color for the following text, available colors are
+	the ones inside the mfchat.color table. You can also set your own color.
+	EXAMPLES :
+		\\{red}
+		\\{prefix}
+		\\{color <R> <G> <B>}
+
+
+	e / E / en : Any entity
+	EXAMPLES :
+		\\{e}  : [403] ship_core
+		\\{E}  : ship_core
+		\\{en} : Ship Core
+	NOTE : \\{en} is not available for all classes. If the class is not found, then {E} is used.
+
+
+	p / P : Any player
+	p is only the playername
+	P is the playername plus his rank color
+]]--
+
+local function explodeNoLoss(str, separator)
+	local t1 = string.explode(str, separator, true)
+	local t2 = {}
+	local t  = {}
+
+	for word in string.gmatch(str, separator) do
+		t2[#t2+1] = word
 	end
 
-	return finalTable
+	for i = 1, #t1 do
+		t[#t+1] = t1[i]
+		t[#t+1] = t2[i] or ""
+	end
+
+	if t[1] == "" then table.remove(t, 1) end
+	if t[#t] == "" then table.remove(t, #t) end
+
+	return t
 end
 
---Global print functions
-function Say(player, ...)
-	local prefix = mainframe.getSetting("Chat Prefix").value
-	local printTable = parsePrintTable(chat.color.prefix, prefix.." ➾ ", ...)
-	if player == ents.owner() then
-		printColor(unpack(printTable))
-	else
-		chat.tell(player, unpack(printTable))
-	end
-end
+function mfchat.parseMessage(message, ...)
 
-function Warn(player, ...)
-	local prefix = mainframe.getSetting("Chat Prefix").value
-	local printTable = parsePrintTable(chat.color.yellow, prefix.." ➾ ", ...)
-
-	if player == ents.owner() then
-		printColor(unpack(printTable))
-	else
-		chat.tell(player, unpack(printTable))
-	end
-end
-
-function Error(player, ...)
-	local prefix = mainframe.getSetting("Chat Prefix").value
-	local printTable = parsePrintTable(chat.color.red, prefix.." ➾ ", ...)
-
-	if player == ents.owner() then
-		printColor(unpack(printTable))
-	else
-		chat.tell(player, unpack(printTable))
-	end
-end
-
-function chat.addCommand(commandTable)
-
-end
-
-function chat.runCommand(commandString)
-
-end
-
-local function parseChat(message, player)
-
-	if not player:getPermissions() then return false end
-
-	local chatPrefix  = mainframe.getSetting("Command Prefix").value
-	local shortPrefix = utf8.sub(chatPrefix, 1, 2)
-	local explodedMessage = message:explode(" ")
-
-	if message:lower() == "/luna id" then
-		Say(player, "My ID is : ", ents.self():index(), ".")
-	end
-
-	if chatPrefix ~= explodedMessage[1]:lower() and shortPrefix ~= explodedMessage[1]:lower() then
-		return false
-	end
-
-	if player ~= ents.owner() then
-		if tonumber(explodedMessage[2]) ~= ents.self():index() then
-			return false
-		end
-	end
-
-	Say(player, "Hello ", player, "!")
 end
