@@ -18,57 +18,72 @@ mfchat = {} --This is the main chat library table.
 	These chat formatting codes are applied for all 3 mainframe-integrated chat functions
 	and more generally by any function using mfchat.parseMessage()
 
-	All formatting codes must be enclosed by \\{<code>}
+	All formatting codes must be enclosed by {<code>}
+	If you want to escape a formatting code, you can use \\ before your brackets.
+	EXAMPLE : {red}My Awesome Text in \\{white} !
+	The first {red} will be caught but not \\{white}. So the text will remain red.
+
+	Chat formatting codes cannot be into other formatting codes.
+	EXAMPLE : {d {s}} IS NOT VALID AND WILL NOT WORK.
 
 	Currently existing formatting codes:
 
 	d <x> <y> : Any number, <x> is the number of decimals, <y> is the number format used.
 	If x or y is not given, lua rules apply for each.
 	EXAMPLES :
-		\\{d 3}		: 3.52682 -> 3.53
-		\\{d s}		: 1000000 -> 1 000 000
-		\\{d p}		: 0.156   -> 15.6%
-		\\{d 2 p}	: 0.15832 -> 15.83%
-		\\{d t}		: 3031    -> 50m31s
-		\\{d T}		: 3031	  -> 50 minutes 31 seconds
+		{d}			: 3.52682 -> 3.52682
+		{d 3}		: 3.52682 -> 3.53
+		{d 06}		: 3.52682 -> 3.526820 (Adds trailing zeros)
+		{d s}		: 1000000 -> 1 000 000
+		{d s}		: 1525.15 -> 1 525.15
+		{d p}		: 0.156   -> 15.6%
+		{d 2 p}		: 0.15832 -> 15.83%
+		{d t}		: 3031    -> 50m31s
+		{d T}		: 3031	  -> 50 minutes 31 seconds
+		{d -1 t}	: 3031	  -> 50m30s (Rounds up)
 
 
 	s <color> : Any string, equivalent to lua concatenation.
 	If a color name or a custom color is supplied, all of that text will be put in that color.
 	EXAMPLES :
-		\\{s}                   : My Awesome Text -> ..My Awesome Text..
-		\\{s red}               : My Awesome Text -> ..\\{red}My Awesome Text\\{white}..
-		\\{s color <r> <g> <b>} : My Awesome Text -> ..\\{color <r> <g> <b>}My Awesome Text\\{white}..
+		{s						: My Awesome Text -> ..My Awesome Text..
+		{s red					: My Awesome Text -> ..{red}My Awesome Text{previous color}..
+		{s color <r> <g> <b>	: My Awesome Text -> ..{color <r> <g> <b>}My Awesome Text{previous color}..
+		{s color}				: My Awesome Text -> ..{color given in arguments}My Awesome{previous color}..
 
 
 	a <x> : Any angle, <x> is the number of decimals for each component.
 	If <x> is not given, lua rules apply.
 	EXAMPLES :
-		\\{a}   : Angle(3.5892, 5.325, 1.2) -> Angle(3.5892, 5.325, 1.2)
-		\\{a 3} : Angle(3.5982, 5.325, 1.2) -> Angle(3.598, 5.325, 1.200)
+		{a}		: Angle(3.5892, 5.325, 1.2) -> Angle(3.5892, 5.325, 1.2)
+		{a 3}	: Angle(3.5982, 5.325, 1.2) -> Angle(3.598, 5.325, 1.2)
+		{a 03}	: Angle(3.5982, 5.325, 1.2) -> Angle(3.598, 5.325, 1.200) (Similar to {d 0x})
 
 
 	v <x> : Any vector, <x> is the number of decimals for each component.
 	If <x> is not given, lua rules apply.
 	EXAMPLES :
-		\\{v}   : Vector(3.5892, 5.325, 1.2) -> Vector(3.5892, 5.325, 1.2)
-		\\{v 3} : Vector(3.5982, 5.325, 1.2) -> Vector(3.598, 5.325, 1.200)
+		{v}   	: Vector(3.5892, 5.325, 1.2) -> Vector(3.5892, 5.325, 1.2)
+		{v 3} 	: Vector(3.5982, 5.325, 1.2) -> Vector(3.598, 5.325, 1.2)
+		{v 03} 	: Vector(3.5982, 5.325, 1.2) -> Angle(3.598, 5.325, 1.200) (Similar to {d 0x})
 
 
 	<color> : Sets the color for the following text, available colors are
 	the ones inside the mfchat.color table. You can also set your own color.
+	The custom color can be given either in the string to format or as a value.
 	EXAMPLES :
-		\\{red}
-		\\{prefix}
-		\\{color <R> <G> <B>}
+		{red}
+		{prefix}
+		{color <R> <G> <B>}
+		{color}
 
 
 	e / E / en : Any entity
 	EXAMPLES :
-		\\{e}  : [403] ship_core
-		\\{E}  : ship_core
-		\\{en} : Ship Core
-	NOTE : \\{en} is not available for all classes. If the class is not found, then {E} is used.
+		{e}  : [403] ship_core
+		{E}  : ship_core
+		{en} : Ship Core
+	NOTE : {en} is not available for all classes. If the class is not found, then {E} is used.
 
 
 	p / P : Any player
@@ -76,7 +91,20 @@ mfchat = {} --This is the main chat library table.
 	P is the playername plus his rank color
 ]]--
 
-mfchat.color = {}
+mfchat.color = {
+	red			= Color.fromHSV(1.0, 0.5, 1.0),
+	blue		= Color.fromHSV(0.5, 0.5, 1.0),
+	green		= Color.fromHSV(0.3, 0.5, 1.0),
+	orange		= Color.fromHSV(1.0, 0.5, 1.0),
+	yellow		= Color.fromHSV(1.0, 0.5, 1.0),
+	purple		= Color.fromHSV(1.0, 0.5, 1.0),
+	gray		= Color.fromHSV(1.0, 0.0, 0.5),
+	white		= Color.fromHSV(1.0, 0.0, 1.0),
+	black		= Color.fromHSV(1.0, 0.0, 0.0),
+	darkgray	= Color.fromHSV(1.0, 0.5, 1.0),
+	darkred		= Color.fromHSV(1.0, 0.5, 1.0),
+	prefix		= Color.fromHSV(1.0, 0.5, 1.0),
+}
 
 local function explodeNoLoss(str, separator)
 	local words = string.explode(str, separator, true)
@@ -90,34 +118,332 @@ local function explodeNoLoss(str, separator)
 	return words, separators
 end
 
-function mfchat.parseMessage(message, ...)
-	local words, formatters = explodeNoLoss(message, "\\%b{}")
-	local messageTable = {}
+local olderr = error
+function error(a, b)
+	olderr(a, b)
+end
 
+local timeUnits = {
+	long = { --The long name for each unit, both singular and plural.
+		{"second " 	, "seconds"			},
+		{"minute " 	, "minutes"			},
+		{"hour "   	, "hours"			},
+		{"day "    	, "days"			},
+		{"week "   	, "weeks"			},
+		{"month "  	, "months"			},
+		{"year "   	, "years"			},
+		{"decade " 	, "decades"			},
+		{"century "	, "centuries"		},
+	},
+	short = { --The short name for each unit.
+		"s", "m", "h", "d", "w", "M", "Y", "D", "C"
+	},
+	span = { --The length of each unit in seconds.
+		1, 60, 3600, 86400, 604800, 2592000, 31536000, 315360000, 3153600000
+	}
+}
+
+local checkType = libraries.checkType
+local recursiveKey = {
+	"This is my recursive key, its a table so you can't possibly replicate it :^)"
+}
+
+function mfchat.parseMessage(message, ...)
+	local words, formatters = explodeNoLoss(message, "\\?%b{}")
+	local messageTable = {}
+	local values = {...}
+	local recursive = false
+	local level = 0
+	--This checks if the call is coming from a recursive call.
+	--If it is then all of the message table will be turned into a string.
+	if values[1] == recursiveKey then
+		table.remove(values, 1)
+		recursive = true
+		level = values[1] + 1
+		table.remove(values, 1)
+	end
+
+	messageTable[1] = words[1]
+
+	local count = 1
 	for i = 1, #formatters do
-		local formatter = utf8.sub(formatters[i], 3, utf8.len(formatters[i])-1)
+		local formatter = utf8.sub(formatters[i], 2, utf8.len(formatters[i])-1)
+
+		local _, recursiveFormatters = explodeNoLoss(formatter, "\\?%b{}")
+		if #recursiveFormatters > 0 then
+			local newFormatter, countOffset = mfchat.parseMessage(formatter, recursiveKey, level, ...)
+			formatter = newFormatter
+			count = count + countOffset
+		end
+
 		local components = formatter:explode(" ")
 
-		if components[1] == "d" then
-
-		elseif components[1] == "s" then
-
-		elseif components[1] == "a" then
-
-		elseif components[1] == "v" then
-
-		elseif components[1] == "e" or components[1] == "E" or components[1] == "en" then
-
-		elseif components[1] == "p" or components[1] == "P" then
-
-		elseif mfchat.color[components[1]] ~= nil or components[1] == "color" then
-
+		if utf8.getChar(formatters[i], 1) == "\\" then
+			messageTable[#messageTable+1] = utf8.sub(formatters[i], 2)
 		else
-			error("Invalid formatting code '"..formatter.."'", 1)
+			local currentValue = values[count]
+			if components[1] == "d" then
+				checkType(currentValue, "number", "value #"..count)
+				local x, y = components[2], components[3]
+				local rounding, format
+
+				if tonumber(x) ~= nil then
+					rounding = math.floor(tonumber(x))
+					if tonumber(y) == nil then
+						format = y
+					else
+						error("Invalid formatting code '"..formatter.."'", 1)
+					end
+				else
+					format = x
+					if y ~= nil then
+						error("Invalid formatting code '"..formatter.."'", 1)
+					end
+				end
+
+				local number = currentValue
+				if rounding ~= nil then
+					if format ~= nil and format == "p" then rounding = rounding + 2 end
+					number = math.round(number, rounding)
+				end
+
+				if format ~= nil then
+					if format == "s" then
+						splt = tostring(number):explode(".")
+						splt[1] = string.reverse(splt[1])
+						local int, dec = "", splt[2]
+						for i = 1, math.ceil(utf8.len(splt[1])/3) do
+							i = (i-1) * 3 + 1
+							local str = utf8.sub(splt[1], i, i+2)
+							int = str.." "..int
+						end
+
+						int = utf8.sub(int, 1, utf8.len(int)-1)
+
+						if dec ~= nil then
+							number = int.."."..dec
+						else
+							number = int
+						end
+
+						messageTable[#messageTable+1] = number
+					elseif format == "p" then
+						number = number * 100
+						messageTable[#messageTable+1] = tostring(number).."%"
+					elseif format == "t" or format == "T" then
+						if number < 0 then error("Invalid time value (must be above -1)", 1) end
+						local names
+
+						if format == "t" then
+							names = timeUnits.short
+						else
+							names = timeUnits.long
+						end
+
+						local str = ""
+						for i = #timeUnits.span, 1, -1 do
+							if number == 0 then break end
+							local span, name = timeUnits.span[i], names[i]
+							local n = math.floor(number / span)
+
+							if i == 1 then n = number end
+							if rounding ~= nil then
+								n = math.round(n, rounding)
+							end
+
+							if n > 0 then
+								number = number - n * span
+								if format == "T" then
+									if n > 1 then name = name[2] else name = name[1] end
+									str = str..n.." "..name.." "
+								else
+									str = str..n..name
+								end
+							end
+						end
+
+						if format == "T" then
+							str = utf8.sub(str, 1, utf8.len(str)-1)
+						end
+
+						if rounding ~= nil and utf8.getChar(components[2], 1) == "0" then
+							local newsplt = str:explode(".")
+							str = newsplt[1]
+
+							for i = 1, rounding - utf8.len(splt[2]) do
+								newsplt[2] = newsplt[2].."0"
+							end
+
+							str = str.."."..newsplt[2]
+						end
+						messageTable[#messageTable+1] = str
+					else
+						error("Invalid formatting code '"..formatter.."'", 1)
+					end
+				else
+					local str = tostring(number)
+					if rounding ~= nil and utf8.getChar(components[2], 1) == "0" then
+						local newsplt = str:explode(".")
+						str = newsplt[1]
+						newsplt[2] = newsplt[2] or ""
+
+						for i = 1, rounding - utf8.len(newsplt[2]) do
+							newsplt[2] = newsplt[2].."0"
+						end
+
+						str = str.."."..newsplt[2]
+					end
+
+					messageTable[#messageTable+1] = str
+				end
+
+				count = count + 1
+			elseif components[1] == "s" then
+				checkType(currentValue, "string", "value #"..count)
+
+				local color, r, g, b = components[2], tonumber(components[3]) or nil, tonumber(components[4]) or 0, tonumber(components[5]) or 0
+
+				if color == nil then
+					messageTable[#messageTable+1] = currentValue
+				else
+					local previousColor = mfchat.color.white
+					for i = #messageTable, 1, -1 do
+						if getmetatable(messageTable[i]) == "Color" then
+							previousColor = messageTable[i]
+							break
+						end
+					end
+
+					if mfchat.color[color] ~= nil then
+						messageTable[#messageTable+1] = mfchat.color[color]
+						messageTable[#messageTable+1] = currentValue
+					elseif r ~= nil then
+						messageTable[#messageTable+1] = Color(r, g, b)
+						messageTable[#messageTable+1] = currentValue
+					else
+						checkType(values[count+1], "Color", "value #"..count+1)
+						messageTable[#messageTable+1] = values[count+1]
+						messageTable[#messageTable+1] = currentValue
+						count = count + 1
+					end
+
+					messageTable[#messageTable+1] = previousColor
+				end
+				count = count + 1
+			elseif components[1] == "a" then
+				checkType(currentValue, "Angle", "value #"..count)
+				local previousColor = mfchat.color.white
+				for i = #messageTable, 1, -1 do
+					if getmetatable(messageTable[i]) == "Color" then
+						previousColor = messageTable[i]
+						break
+					end
+				end
+
+				local p, y, r = currentValue.p, currentValue.y, currentValue.r
+
+				if tonumber(components[2]) ~= nil then
+					p = mfchat.parseMessage("{d "..components[2].."}", p)[1]
+					y = mfchat.parseMessage("{d "..components[2].."}", y)[1]
+					r = mfchat.parseMessage("{d "..components[2].."}", r)[1]
+				end
+
+				local formattedTable = mfchat.parseMessage("{color}Angle({s green}, {s green}, {s green})", previousColor, p, y, r)
+
+				for i = 1, #formattedTable do
+					messageTable[#messageTable+1] = formattedTable[i]
+				end
+
+				count = count + 1
+
+				count = count + 1
+			elseif components[1] == "v" then
+				checkType(currentValue, "Vector", "value #"..count)
+				local previousColor = mfchat.color.white
+				for i = #messageTable, 1, -1 do
+					if getmetatable(messageTable[i]) == "Color" then
+						previousColor = messageTable[i]
+						break
+					end
+				end
+
+				local x, y, z = currentValue.x, currentValue.y, currentValue.z
+
+				if tonumber(components[2]) ~= nil then
+					x = mfchat.parseMessage("{d "..components[2].."}", x)[1]
+					y = mfchat.parseMessage("{d "..components[2].."}", y)[1]
+					z = mfchat.parseMessage("{d "..components[2].."}", z)[1]
+				end
+
+				local formattedTable = mfchat.parseMessage("{color}Vector({s green}, {s green}, {s green})", previousColor, x, y, z)
+
+				for i = 1, #formattedTable do
+					messageTable[#messageTable+1] = formattedTable[i]
+				end
+
+				count = count + 1
+			elseif components[1] == "e" or components[1] == "E" or components[1] == "en" then
+				checkType(currentValue, "Entity", "value #"..count)
+				if not IsValid(currentValue) then error("Invalid entity", 1) end
+				local previousColor = mfchat.color.white
+				for i = #messageTable, 1, -1 do
+					if getmetatable(messageTable[i]) == "Color" then
+						previousColor = messageTable[i]
+						break
+					end
+				end
+				count = count + 1
+			elseif components[1] == "p" or components[1] == "P" then
+				checkType(currentValue, "Player", "value #"..count)
+				if not IsValid(currentValue) then error("Invalid player entity", 1) end
+				local previousColor = mfchat.color.white
+				for i = #messageTable, 1, -1 do
+					if getmetatable(messageTable[i]) == "Color" then
+						previousColor = messageTable[i]
+						break
+					end
+				end
+
+				if components[1] == "p" then
+					messageTable[#messageTable+1] = currentValue:name()
+				else
+					messageTable[#messageTable+1] = currentValue:getTeamColor()
+					messageTable[#messageTable+1] = currentValue:name()
+					messageTable[#messageTable+1] = previousColor
+				end
+				count = count + 1
+			elseif mfchat.color[components[1]] ~= nil or components[1] == "color" then
+				if mfchat.color[components[1]] ~= nil then
+					messageTable[#messageTable+1] = mfchat.color[components[1]]
+				else
+					local r, g, b = tonumber(components[2]), tonumber(components[3]) or 0, tonumber(components[4]) or 0
+
+					if r == nil then
+						checkType(currentValue, "Color", "value #"..count)
+						messageTable[#messageTable+1] = currentValue
+						count = count + 1
+					else
+						messageTable[#messageTable+1] = Color(r, g, b)
+					end
+				end
+			else
+				error("Invalid formatting code '"..formatter.."'", 1)
+			end
+		end
+
+		messageTable[#messageTable+1] = words[i+1]
+	end
+
+	if recursive then
+		local success, newMessageTable = pcall(table.concat, messageTable)
+		if success then
+			return newMessageTable, count-1
+		else
+			error("Invalid recursive formatting codes.", level)
 		end
 	end
 
-
+	return messageTable
 end
 
-mfchat.parseMessage("\\{red}This text is red !\\{white}Now not anymore.")
+printColor(unpack(mfchat.parseMessage("{d {s}}", "02", 1)))

@@ -20,10 +20,31 @@ libraries = {
 	environmentBlacklist = {}
 }
 
+local entityMetatableList = {
+	"Entity",
+	"ShipCore",
+	"Shield",
+	"Shuttle",
+	"Player"
+}
+
 --Throws an error if the type of the given variable doesnt match the type to check.
-function libraries.checkType(value, typeToCheck, argumentName)
-	if type(value) ~= typeToCheck then
-		error("Invalid type for argument "..argumentName.." expected "..typeToCheck.." got "..type(value), 2)
+function libraries.checkType(value, typeToCheck, argumentName, level)
+	level = level or 0
+	if typeToCheck == "Entity" then
+		for i = 1, #entityMetatableList do
+			if type(value) == entityMetatableList[i] then
+				return
+			end
+		end
+
+		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
+	elseif typeToCheck == "Color" then
+		if getmetatable(value) ~= "Color" then
+			error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
+		end
+	elseif type(value) ~= typeToCheck then
+		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
 	end
 end
 
