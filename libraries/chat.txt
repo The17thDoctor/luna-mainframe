@@ -76,26 +76,48 @@ mfchat = {} --This is the main chat library table.
 	P is the playername plus his rank color
 ]]--
 
+mfchat.color = {}
+
 local function explodeNoLoss(str, separator)
-	local t1 = string.explode(str, separator, true)
-	local t2 = {}
-	local t  = {}
+	local words = string.explode(str, separator, true)
+	local separators = {}
 
-	for word in string.gmatch(str, separator) do
-		t2[#t2+1] = word
+	for sep in string.gmatch(str, separator) do
+		separators[#separators+1] = sep
 	end
 
-	for i = 1, #t1 do
-		t[#t+1] = t1[i]
-		t[#t+1] = t2[i] or ""
-	end
 
-	if t[1] == "" then table.remove(t, 1) end
-	if t[#t] == "" then table.remove(t, #t) end
-
-	return t
+	return words, separators
 end
 
 function mfchat.parseMessage(message, ...)
+	local words, formatters = explodeNoLoss(message, "\\%b{}")
+	local messageTable = {}
+
+	for i = 1, #formatters do
+		local formatter = utf8.sub(formatters[i], 3, utf8.len(formatters[i])-1)
+		local components = formatter:explode(" ")
+
+		if components[1] == "d" then
+
+		elseif components[1] == "s" then
+
+		elseif components[1] == "a" then
+
+		elseif components[1] == "v" then
+
+		elseif components[1] == "e" or components[1] == "E" or components[1] == "en" then
+
+		elseif components[1] == "p" or components[1] == "P" then
+
+		elseif mfchat.color[components[1]] ~= nil or components[1] == "color" then
+
+		else
+			error("Invalid formatting code '"..formatter.."'", 1)
+		end
+	end
+
 
 end
+
+mfchat.parseMessage("\\{red}This text is red !\\{white}Now not anymore.")
