@@ -335,7 +335,7 @@ if SERVER then
 		checkType(name, "string", "name")
 		sType = sType:upper()
 		extras = extras or {}
-		if sType[type] == nil then error("Unknown settings type", 1) end
+		if settingType[sType] == nil then error("Unknown setting type", 1) end
 		if sType == "NUMBER" and type(default) ~= "number" then
 			error("Invalid default value (expected number, got "..type(default)..")", 1)
 		elseif (sType == "WORD" or sType == "STRING") and type(default) ~= "string" then
@@ -406,8 +406,16 @@ if SERVER then
 	end
 
 	--Returns a setting given its identifier
-	function mainframe.getSetting(name)
-		return mainframe.settings[name]
+	function mainframe.getSetting(name, field)
+		if field ~= nil then
+			if mainframe.settings[name] ~= nil and mainframe.settings[name][field] ~= nil then
+				return mainframe.settings[name][field]
+			else
+				return nil
+			end
+		else
+			return mainframe.settings[name]
+		end
 	end
 
 	--Sets a setting to the given value, it will check for the validity of the value
@@ -467,8 +475,9 @@ if SERVER then
 		mainframe.settings[name].value = mainframe.settings[name].default
 		return mainframe.saveFile()
 	end
-end
 
+	libraries.addToEnvironment("settingType", settingType)
+end
 
 --Lastly we're adding all written functions into the environment.
 libraries.addToEnvironment("mainframe", mainframe)

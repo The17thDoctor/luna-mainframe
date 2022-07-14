@@ -3,36 +3,67 @@
 --@class none
 
 --@includedir luna/libraries
+
 --@includedir luna/modules
+--@includedir luna/modules/base
 
 --[[
 	The bootstrapper is responsible for loading libraries and modules.
 	The essentials library should be loaded first, environment last.
 ]]--
 
+local function checkType(value, typeToCheck, argumentName, level)
+	level = level or 0
+	if typeToCheck == "Entity" then
+		for i = 1, #entityMetatableList do
+			if type(value) == entityMetatableList[i] then
+				return
+			end
+		end
+
+		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
+	elseif typeToCheck == "Color" then
+		if getmetatable(value) ~= "Color" then
+			error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
+		end
+	elseif type(value) ~= typeToCheck then
+		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
+	end
+end
+
 --All loaded libraries, essentials should be loaded first, environment last.
 bootstrapper = {}
 
 local libraries = {}
+local loadingOrder = {}
 
+--Adds a library into the loading sequence
 function bootstrapper.addLibrary(libraryName)
+	checkType(libraryName, "string", "libraryName")
 	libraries[#libraries+1] = libraryName
 end
 
+--Loads all libraries
 function bootstrapper.loadAllLibraries()
 	for i = 1, #libraries do
 		require("luna/libraries/"..libraries[i])
 	end
 end
 
+--Loads all modules
 function bootstrapper.loadAllModules()
 	local scripts = starfall.getScripts()
-	for path, moduleCode in pairs(scripts) do
-		if string.find(path, "luna/modules/") ~= nil then
-			setfenv(moduleCode, getModuleEnvironment(path))
-			xpcall(moduleCode, errorHandler)
-		end
-	end
+	table.sort(loadingOrder, function(a, b)
+		return a[2] < b[2]
+	end)
+end
+
+--Tells the bootstrapper to load a module before others.
+function bootstrapper.setPriority(moduleName, priority)
+	checkType(moduleName, "string", "moduleName")
+	checkType(priority, "number", "priority")
+
+	loadingOrder[#loadingOrder+1] = {moduleName, priority}
 end
 
 bootstrapper.addLibrary("essentials")

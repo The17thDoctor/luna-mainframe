@@ -1,3 +1,7 @@
 --@name Luna | Minimal Module
 --@author The17thDoctor
 --@class none
+
+if SERVER then
+	mfchat.say(ents.owner(), "Hello {P} !", ents.owner())
+end

@@ -92,18 +92,20 @@ mfchat = {} --This is the main chat library table.
 ]]--
 
 mfchat.color = {
-	red			= Color.fromHSV(1.0, 0.5, 1.0),
-	blue		= Color.fromHSV(0.5, 0.5, 1.0),
-	green		= Color.fromHSV(0.3, 0.5, 1.0),
-	orange		= Color.fromHSV(1.0, 0.5, 1.0),
-	yellow		= Color.fromHSV(1.0, 0.5, 1.0),
-	purple		= Color.fromHSV(1.0, 0.5, 1.0),
-	gray		= Color.fromHSV(1.0, 0.0, 0.5),
-	white		= Color.fromHSV(1.0, 0.0, 1.0),
-	black		= Color.fromHSV(1.0, 0.0, 0.0),
-	darkgray	= Color.fromHSV(1.0, 0.5, 1.0),
-	darkred		= Color.fromHSV(1.0, 0.5, 1.0),
-	prefix		= Color.fromHSV(1.0, 0.5, 1.0),
+	red			= Color.fromHSV(1.00, 0.75, 1.00),
+	blue		= Color.fromHSV(0.65, 0.60, 1.00),
+	green		= Color.fromHSV(0.30, 0.60, 1.00),
+	orange		= Color.fromHSV(0.05, 0.75, 1.00),
+	yellow		= Color.fromHSV(0.15, 0.75, 1.00),
+	purple		= Color.fromHSV(0.75, 0.60, 1.00),
+	gray		= Color.fromHSV(1.00, 0.00, 0.50),
+	white		= Color.fromHSV(1.00, 0.00, 1.00),
+	black		= Color.fromHSV(1.00, 0.00, 0.00),
+	darkgray	= Color.fromHSV(1.00, 0.00, 0.25),
+	darkred		= Color.fromHSV(1.00, 0.75, 0.60),
+	prefix		= Color.fromHSV(0.62, 0.66, 0.70),
+	warn		= Color.fromHSV(0.13, 0.75, 1.00),
+	error		= Color.fromHSV(0.02, 0.75, 1.00),
 }
 
 local function explodeNoLoss(str, separator)
@@ -459,3 +461,102 @@ function mfchat.parseMessage(message, ...)
 
 	return messageTable
 end
+
+local tellingQueue = {}
+
+local function startQueueEmptying()
+	timer.create("Queue Emptying", 0.25, 0, function()
+		local nextTell = tellingQueue[1]
+
+		if IsValid(nextTell[2]) and chat.canTell(nextTell[2]) then
+			nextTell[1](nextTell[2], unpack(nextTell[3]))
+			table.remove(tellingQueue, 1)
+		elseif not IsValid(nextTell[2]) then
+			table.remove(tellingQueue, 1)
+		end
+
+		if #tellingQueue == 0 then
+			timer.remove("Queue Emptying")
+		end
+	end)
+end
+
+function mfchat.say(player, message, ...)
+
+	local prefix = mainframe.getSetting("Chat Prefix", "value")
+
+	local messageTable = mfchat.parseMessage(message, ...)
+	local prefixTable = mfchat.parseMessage("{prefix}{s} ➾ {white}", prefix)
+
+	for i = 1, #messageTable do
+		prefixTable[#prefixTable+1] = messageTable[i]
+	end
+
+	messageTable = prefixTable
+
+	if player == ents.owner() then
+		printColor(unpack(messageTable))
+	elseif IsValid(player) then
+		table.insert(messageTable, 1, player)
+		if chat.canTell(player) then
+			chat.tell(unpack(messageTable))
+		else
+			tellingQueue[#tellingQueue+1] = {mfchat.say, player, messageTable}
+			startQueueEmptying()
+		end
+	end
+end
+
+function mfchat.warn(player, message, ...)
+
+	local prefix = mainframe.getSetting("Chat Prefix", "value")
+
+	local messageTable = mfchat.parseMessage(message, ...)
+	local prefixTable = mfchat.parseMessage("{warn}{s} ➾ {white}", prefix)
+
+	for i = 1, #messageTable do
+		prefixTable[#prefixTable+1] = messageTable[i]
+	end
+
+	messageTable = prefixTable
+
+	if player == ents.owner() then
+		printColor(unpack(messageTable))
+	elseif IsValid(player) then
+		table.insert(messageTable, 1, player)
+		if chat.canTell(player) then
+			chat.tell(unpack(messageTable))
+		else
+			tellingQueue[#tellingQueue+1] = {mfchat.warn, player, messageTable}
+			startQueueEmptying()
+		end
+	end
+end
+
+function mfchat.error(player, message, ...)
+
+	local prefix = mainframe.getSetting("Chat Prefix", "value")
+
+	local messageTable = mfchat.parseMessage(message, ...)
+	local prefixTable = mfchat.parseMessage("{error}{s} ➾ {white}", prefix)
+
+	for i = 1, #messageTable do
+		prefixTable[#prefixTable+1] = messageTable[i]
+	end
+
+	messageTable = prefixTable
+
+	if player == ents.owner() then
+		printColor(unpack(messageTable))
+	elseif IsValid(player) then
+		table.insert(messageTable, 1, player)
+		if chat.canTell(player) then
+			chat.tell(unpack(messageTable))
+		else
+			tellingQueue[#tellingQueue+1] = {mfchat.error, player, messageTable}
+			startQueueEmptying()
+		end
+	end
+end
+
+libraries.addToEnvironment("mfchat", mfchat)
