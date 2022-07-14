@@ -85,6 +85,8 @@ function getModuleEnvironment(modulePath)
 	environment._G.NOTIFY_GENERIC = NOTIFY_GENERIC
 	environment._G.NOTIFY_ERROR = NOTIFY_ERROR
 
+	environment.luna = luna
+
 	---HOOKS
 	local localHooks = {}
 	localHooks.__index = localHooks

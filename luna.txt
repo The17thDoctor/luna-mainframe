@@ -9,7 +9,25 @@
 --@includedir luna/libraries
 
 --@includedir luna/modules
+--@includedir luna/modules/base
 
+--Luna's extra settings
+luna = {}
+luna.owo = true
+
+
+--Luna's Base Libraries
+bootstrapper.addLibrary("essentials")
+bootstrapper.addLibrary("networking")
+bootstrapper.addLibrary("rendering")
+bootstrapper.addLibrary("wirelink")
+bootstrapper.addLibrary("design")
+bootstrapper.addLibrary("chat")
 bootstrapper.addLibrary("environment")
+
+--Luna's Base Modules
+
+
+--Loading all libraries and modules
 bootstrapper.loadAllLibraries()
 bootstrapper.loadAllModules()

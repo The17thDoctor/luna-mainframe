@@ -185,7 +185,7 @@ function mfchat.parseMessage(message, ...)
 		else
 			local currentValue = values[count]
 			if components[1] == "d" then
-				checkType(currentValue, "number", "value #"..count)
+				checkType(currentValue, "number", "value #"..count, level)
 				local x, y = components[2], components[3]
 				local rounding, format
 
@@ -301,7 +301,7 @@ function mfchat.parseMessage(message, ...)
 
 				count = count + 1
 			elseif components[1] == "s" then
-				checkType(currentValue, "string", "value #"..count)
+				checkType(currentValue, "string", "value #"..count, level)
 
 				local color, r, g, b = components[2], tonumber(components[3]) or nil, tonumber(components[4]) or 0, tonumber(components[5]) or 0
 
@@ -323,7 +323,7 @@ function mfchat.parseMessage(message, ...)
 						messageTable[#messageTable+1] = Color(r, g, b)
 						messageTable[#messageTable+1] = currentValue
 					else
-						checkType(values[count+1], "Color", "value #"..count+1)
+						checkType(values[count+1], "Color", "value #"..count+1, level)
 						messageTable[#messageTable+1] = values[count+1]
 						messageTable[#messageTable+1] = currentValue
 						count = count + 1
@@ -333,7 +333,7 @@ function mfchat.parseMessage(message, ...)
 				end
 				count = count + 1
 			elseif components[1] == "a" then
-				checkType(currentValue, "Angle", "value #"..count)
+				checkType(currentValue, "Angle", "value #"..count, level)
 				local previousColor = mfchat.color.white
 				for i = #messageTable, 1, -1 do
 					if getmetatable(messageTable[i]) == "Color" then
@@ -360,7 +360,7 @@ function mfchat.parseMessage(message, ...)
 
 				count = count + 1
 			elseif components[1] == "v" then
-				checkType(currentValue, "Vector", "value #"..count)
+				checkType(currentValue, "Vector", "value #"..count, level)
 				local previousColor = mfchat.color.white
 				for i = #messageTable, 1, -1 do
 					if getmetatable(messageTable[i]) == "Color" then
@@ -385,7 +385,7 @@ function mfchat.parseMessage(message, ...)
 
 				count = count + 1
 			elseif components[1] == "e" or components[1] == "E" or components[1] == "en" then
-				checkType(currentValue, "Entity", "value #"..count)
+				checkType(currentValue, "Entity", "value #"..count, level)
 				if not IsValid(currentValue) then error("Invalid entity", 1) end
 				local previousColor = mfchat.color.white
 				for i = #messageTable, 1, -1 do
@@ -410,7 +410,7 @@ function mfchat.parseMessage(message, ...)
 				end
 				count = count + 1
 			elseif components[1] == "p" or components[1] == "P" then
-				checkType(currentValue, "Player", "value #"..count)
+				checkType(currentValue, "Player", "value #"..count, level)
 				if not IsValid(currentValue) then error("Invalid player entity", 1) end
 				local previousColor = mfchat.color.white
 				for i = #messageTable, 1, -1 do
@@ -435,7 +435,7 @@ function mfchat.parseMessage(message, ...)
 					local r, g, b = tonumber(components[2]), tonumber(components[3]) or 0, tonumber(components[4]) or 0
 
 					if r == nil then
-						checkType(currentValue, "Color", "value #"..count)
+						checkType(currentValue, "Color", "value #"..count, level)
 						messageTable[#messageTable+1] = currentValue
 						count = count + 1
 					else
@@ -483,7 +483,7 @@ end
 
 function mfchat.say(player, message, ...)
 
-	local prefix = mainframe.getSetting("Chat Prefix", "value")
+	local prefix = mainframe.getSetting("Chat Prefix", "value") or "Luna"
 
 	local messageTable = mfchat.parseMessage(message, ...)
 	local prefixTable = mfchat.parseMessage("{prefix}{s} ➾ {white}", prefix)
@@ -509,7 +509,7 @@ end
 
 function mfchat.warn(player, message, ...)
 
-	local prefix = mainframe.getSetting("Chat Prefix", "value")
+	local prefix = mainframe.getSetting("Chat Prefix", "value") or "Luna"
 
 	local messageTable = mfchat.parseMessage(message, ...)
 	local prefixTable = mfchat.parseMessage("{warn}{s} ➾ {white}", prefix)
@@ -535,7 +535,7 @@ end
 
 function mfchat.error(player, message, ...)
 
-	local prefix = mainframe.getSetting("Chat Prefix", "value")
+	local prefix = mainframe.getSetting("Chat Prefix", "value") or "Luna"
 
 	local messageTable = mfchat.parseMessage(message, ...)
 	local prefixTable = mfchat.parseMessage("{error}{s} ➾ {white}", prefix)

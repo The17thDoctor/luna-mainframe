@@ -1,7 +1,14 @@
---@name Luna | Minimal Module
---@author The17thDoctor
---@class none
+--@name 
+--@author 
 
-if SERVER then
-	mfchat.say(ents.owner(), "Hello {P} !", ents.owner())
-end
+--[[
+    Starfall Scripting Environment
+
+	All documentation is available through the ? button at the top right of the editor.
+	If you need help with concepts/usage, then see the tutorial below:
+
+    https://teamscm.co.uk/showthread.php?tid=7
+
+    Happy scripting!
+]]
+
