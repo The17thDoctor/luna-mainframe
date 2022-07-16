@@ -62,8 +62,10 @@ function bootstrapper.loadAllModules()
 	for i = 1, #loadingOrder do
 		local scriptPath = "luna/modules/"..loadingOrder[i][1]
 		if scripts[scriptPath] ~= nil and not loaded[scriptPath] then
+			local moduleEnvironment = getModuleEnvironment(scriptPath)
+			setfenv(scripts[scriptPath], moduleEnvironment)
 			loaded[scriptPath] = true
-			scripts[scriptPath]()
+			xpcall(scripts[scriptPath], errorHandler)
 		end
 	end
 
@@ -71,6 +73,8 @@ function bootstrapper.loadAllModules()
 		local explPath = path:explode("/")
 		if explPath[1] == "luna" and explPath[2] == "modules" then
 			if not loaded[path] then
+				local moduleEnvironment = getModuleEnvironment(path)
+				setfenv(func, moduleEnvironment)
 				xpcall(func, errorHandler)
 			end
 		end

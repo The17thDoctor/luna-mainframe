@@ -10,3 +10,57 @@
 ]]--
 
 if CLIENT then return end
+local checkType = libraries.checkType
+
+local mfwire = {}
+
+local libMeta = {}
+libMeta.__index = libMeta
+local moduleMeta = {}
+
+--Keeps people from just indexing values they should probably not
+function moduleMeta.__index(self, key)
+	if type(moduleMeta[key]) == "function" then
+		return moduleMeta[key]
+	else
+		return nil
+	end
+end
+
+--Locks the table
+function moduleMeta.__newindex()
+
+end
+
+function libMeta.__call(_, mClass, names, unique, toggleable, togglerFunc, wireExtras)
+	checkType(mClass, "string", "class")
+	checkType(names, "table", "names")
+	checkType(unique, "boolean", "unique")
+	checkType(toggleable, "boolean", "toggleable")
+	if wireExtras ~= nil then
+		checkType(togglerFunc, "function", "toggler")
+		checkType(wireExtras, "table", "wireExtras")
+	else
+		wireExtras = togglerFunc
+		checkType(wireExtras, "table", "wireExtras")
+	end
+
+	togglerFunc = togglerFunc or standardToggler
+
+	if names.system == nil then error("Missing module system name", 1)
+	elseif names.entity == nil then error("Missing module entity name", 1) end
+
+	local module = {
+		class = mClass,
+		names = names,
+		unique = unique,
+		toggleable = toggleable,
+		togglerFunc = togglerFunc,
+		wireExtras = wireExtras,
+	}
+
+	return setmetatable(module, moduleMeta)
+end
+
+libraries.addToEnvironment("Module", setmetatable({}, libMeta))
+libraries.addToEnvironment("mfwire", mfwire)

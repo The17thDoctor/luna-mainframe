@@ -11,7 +11,7 @@
 
 if CLIENT then return end
 
-mfchat = {} --This is the main chat library table.
+local mfchat = {} --This is the main chat library table.
 
 --[[
 	Chat Formatting codes

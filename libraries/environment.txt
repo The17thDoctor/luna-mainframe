@@ -7,6 +7,65 @@
 	the mainframe from crashing entirely.
 ]]--
 
+local standardStarfallLibraries = {
+	"_G",
+	"base64",
+	"bit",
+	"bot",
+	"channels",
+	"chat",
+	"Color",
+	"console",
+	"constraint",
+	"coroutine",
+	"debug",
+	"effects",
+	"emitter",
+	"emoji",
+	"entities",
+	"ents",
+	"faction",
+	"fastlz",
+	"files",
+	"find",
+	"game",
+	"globaltables",
+	"holograms",
+	"hook",
+	"http",
+	"input",
+	"io",
+	"json",
+	"math",
+	"mesh",
+	"net",
+	"npc",
+	"os",
+	"permissions",
+	"physenv",
+	"profiler",
+	"propprotection",
+	"props",
+	"quaternion",
+	"render",
+	"rendertarget",
+	"serverinfo",
+	"sounds",
+	"spacebuild",
+	"starfall",
+	"stargate",
+	"string",
+	"system",
+	"table",
+	"time",
+	"timer",
+	"trace",
+	"utf8",
+	"util",
+	"von",
+	"wire",
+}
+
 --Removing starfall standard libraries to replace them.
 libraries.removeFromEnvironment("_G")
 libraries.removeFromEnvironment("net")
@@ -395,7 +454,8 @@ function getModuleEnvironment(modulePath)
 	local localEnvironment = {}
 
 	--Adding all allowed libraries into the environment
-	for libraryName, libraryTable in pairs(getfenv()) do
+	for i = 1, #standardStarfallLibraries do
+		local libraryName, libraryTable = standardStarfallLibraries[i], _G[standardStarfallLibraries[i]]
 		if not libraries.environmentBlacklist[libraryName] then
 			environment[libraryName] = libraryTable
 			localEnvironment[libraryName] = libraryTable

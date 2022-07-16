@@ -13,7 +13,6 @@
 
 --Luna's extra settings
 luna = {}
-luna.owo = true
 
 
 --Luna's Base Libraries
@@ -25,7 +24,10 @@ bootstrapper.addLibrary("design")
 bootstrapper.addLibrary("chat")
 bootstrapper.addLibrary("environment")
 
---Luna's Base Modules
+--[[ Luna's Module Loading Order
+	It is advised to leave the base modules with top priority
+	Change it only if you need it and you know what you are doing
+]]--
 
 
 --Loading all libraries and modules
