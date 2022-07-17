@@ -323,19 +323,27 @@ if SERVER then
 
 	mainframe.settings 	= {}
 
-	settingType = {
-		NUMBER = "NUMBER",
-		STRING = "STRING",
-		BOOLEAN = "BOOLEAN",
-		WORD = "WORD",
+	mainframe.SETTING_TYPE_WORD = "WORD"
+	mainframe.SETTING_TYPE_NUMBER = "NUMBER"
+	mainframe.SETTING_TYPE_STRING = "STRING"
+	mainframe.SETTING_TYPE_BOOLEAN = "BOOLEAN"
+
+	local WORD = mainframe.SETTING_TYPE_WORD
+	local NUMBER = mainframe.SETTING_TYPE_NUMBER
+	local STRING = mainframe.SETTING_TYPE_STRING
+	local BOOLEAN = mainframe.SETTING_TYPE_BOOLEAN
+
+	local allowedSettingTypes = {
+		WORD, NUMBER, STRING, BOOLEAN
 	}
+
 
 	--Adds a mainframe setting, this setting will be automatically saved to luna's save file
 	function mainframe.addSetting(name, sType, default, extras)
 		checkType(name, "string", "name")
 		sType = sType:upper()
 		extras = extras or {}
-		if settingType[sType] == nil then error("Unknown setting type", 1) end
+		if allowedSettingTypes[sType] == nil then error("Unknown setting type", 1) end
 		if sType == "NUMBER" and type(default) ~= "number" then
 			error("Invalid default value (expected number, got "..type(default)..")", 1)
 		elseif (sType == "WORD" or sType == "STRING") and type(default) ~= "string" then
@@ -427,7 +435,7 @@ if SERVER then
 
 		checkType(value, type(setting.default), "value")
 
-		if sType == settingType.NUMBER then
+		if sType == mainframe.SETTING_TYPE_NUMBER then
 			local min, max = extras.min or -math.huge, extras.max or math.huge
 			if extras.choices ~= nil then
 				if not extras.choices[value] then
@@ -436,7 +444,7 @@ if SERVER then
 			elseif value < min or value > max then
 				return false, "value out of bounds"
 			end
-		elseif sType == settingType.STRING then
+		elseif sType == mainframe.SETTING_TYPE_STRING then
 			local length = extras.length or math.huge
 			if utf8.len(value) > length then
 				return false, "string too long"
@@ -445,7 +453,7 @@ if SERVER then
 					return false, "value not within choices"
 				end
 			end
-		elseif sType == settingType.WORD then
+		elseif sType == mainframe.SETTING_TYPE_WORD then
 			local length = extras.length or math.huge
 			if utf8.len(value) > length then
 				return false, "word too long"
@@ -475,8 +483,6 @@ if SERVER then
 		mainframe.settings[name].value = mainframe.settings[name].default
 		return mainframe.saveFile()
 	end
-
-	libraries.addToEnvironment("settingType", settingType)
 end
 
 --Lastly we're adding all written functions into the environment.

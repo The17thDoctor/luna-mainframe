@@ -1,6 +1,7 @@
 --@name Luna Mainframe
 --@author The17thDoctor
 --@class emitter, screen, processor
+--@autoupdate
 --@highres
 --@shared
 
