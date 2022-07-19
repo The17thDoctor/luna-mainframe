@@ -10,3 +10,336 @@
 ]]--
 
 if SERVER then return end
+
+local checkType = libraries.checkType
+
+local mfdesign = {}
+local buttons = {
+	rect 	= {},
+	circle 	= {},
+	poly 	= {},
+} --Stores all buttons added by the user.
+
+
+local min, max = math.min, math.max
+--Returns whether two lines intersect
+local function lineIntersect(L1, L2)
+	local X1, Y1, X2, Y2 = unpack(L1)
+	local X3, Y3, X4, Y4 = unpack(L2)
+
+	if X1 == X2 or X3 == X4 then return false end
+	if max(X1,X2) < min(X3,X4) then return false end
+
+	local A1 = (Y1 - Y2) / (X1 - X2)
+	local A2 = (Y3 - Y4) / (X3 - X4)
+	local b1 = Y1 - A1 * X1
+	local b2 = Y3 - A2 * X3
+
+	if (A1 == A2) then return false end
+
+	Xa = (b2 - b1) / (A1 - A2)
+	if (Xa < max(min(X1, X2), min(X3, X4))) or (Xa > min(max(X1, X2), max(X3, X4))) then
+		return false
+	end
+
+	return true
+end
+
+---BUTTONS
+
+local buttonMeta = {}
+buttonMeta.__index = buttonMeta
+
+local buttons = {
+	rect 	= {},
+	circle 	= {},
+	poly 	= {}
+}
+
+--Returns the position of the button, can be based off of a specific vertex for polygons
+function buttonMeta:pos(i)
+	if self.type == mfdesign.BUTTON_TYPE_POLY then
+		if i ~= nil then
+			checkType(i, "number", "i")
+		end
+
+		i = i or 1
+
+		if self.polyTable[i] ~= nil then
+			return self.polyTable[i].x, self.polyTable[i].y
+		else
+			error("Index out of bound", 1)
+		end
+	else
+		return self.x, self.y
+	end
+end
+
+--Shifts the button by X and Y pixels
+function buttonMeta:translate(x, y)
+	checkType(x, "number", "x")
+	checkType(y, "number", "y")
+	if self.type == mfdesign.BUTTON_TYPE_POLY then
+		for i = 1, #self.polyTable do
+			self.polyTable[i].x = self.polyTable[i].x + x
+			self.polyTable[i].y = self.polyTable[i].y + y
+		end
+	else
+		self.x = self.x + x
+		self.y = self.y + y
+	end
+end
+
+--Sets the position for the button, for polygonal buttons, the vertex index to base the setPos on can be given, else 1
+function buttonMeta:setPos(x, y, i)
+	checkType(x, "number", "x")
+	checkType(y, "number", "y")
+
+	if self.type == mfdesign.BUTTON_TYPE_POLY then
+		if i ~= nil then
+			checkType(i, "number", "i")
+		end
+
+		i = i or 1
+
+		if self.polyTable[i] ~= nil then
+			local px, py = self.polyTable[i].x, self.polyTable[i].y
+			self:translate(x - px, y - py)
+		else
+			error("Index out of bound", 1)
+		end
+	else
+		self.x = x
+		self.y = y
+	end
+end
+
+--Returns the button's unique identifier
+function buttonMeta:identifier()
+	return self.identifier
+end
+
+--Sets the function to run
+function buttonMeta:setFunction(func)
+	checkType(func, "function", "func")
+	self.func = func
+end
+
+--Runs the function bound to the button
+function buttonMeta:triggerFunction(...)
+	return self.func(...)
+end
+
+function buttonMeta:remove()
+	if self.type == mfdesign.BUTTON_TYPE_RECT then
+		buttons.rect[self.identifier] = nil
+	elseif self.type == mfdesign.BUTTON_TYPE_POLY then
+		buttons.poly[self.identifier] = nil
+	elseif self.type == mfdesign.BUTTON_TYPE_CIRCLE then
+		buttons.circle[self.identifier] = nil
+	end
+
+	self = nil
+end
+
+mfdesign.BUTTON_TYPE_RECT = "RECT"
+mfdesign.BUTTON_TYPE_POLY = "POLY"
+mfdesign.BUTTON_TYPE_CIRCLE = "CIRLE"
+
+--Clears all buttons from a certain type of all buttons if none provided
+function mfdesign.clearButtons(type)
+	if type == mfdesign.BUTTON_TYPE_RECT then
+		buttons.rect = {}
+	elseif type == mfdesign.BUTTON_TYPE_CIRCLE then
+		buttons.circle = {}
+	elseif type == mfdesign.BUTTON_TYPE_POLY then
+		buttons.poly = {}
+	elseif type ~= nil then
+		error("Invalid button type", 1)
+	else
+		buttons = {
+			rect 	= {},
+			circle 	= {},
+			poly 	= {},
+		}
+	end
+end
+
+--Removes a button
+function mfdesign.removeButton(type, identifier)
+	if type == mfdesign.BUTTON_TYPE_RECT then
+		buttons.rect[identifier] = nil
+	elseif type == mfdesign.BUTTON_TYPE_POLY then
+		buttons.rect[identifier] = nil
+	elseif type == mfdesign.BUTTON_TYPE_CIRCLE then
+		buttons.rect[identifier] = nil
+	else
+		error("Invalid button type.", 1)
+	end
+end
+
+--Gets a button given its type and identifier
+function mfdesign.getButton(type, identifier)
+	if type == mfdesign.BUTTON_TYPE_RECT then
+		return buttons.rect[identifier]
+	elseif type == mfdesign.BUTTON_TYPE_CIRCLE then
+		return buttons.circle[identifier]
+	elseif type == mfdesign.BUTTON_TYPE_POLY then
+		return buttons.poly[identifier]
+	else
+		error("Invalid button type", 1)
+	end
+end
+
+--Adds a rectangular button
+function mfdesign.addRectButton(identifier, x, y, w, h, func)
+	checkType(x, "number", "x")
+	checkType(y, "number", "y")
+	checkType(w, "number", "w")
+	checkType(h, "number", "h")
+	checkType(func, "function", "func")
+
+	local buttonTable = {
+		identifier = identifier,
+		type = mfdesign.BUTTON_TYPE_RECT,
+		x = x, y = y, w = w, h = h,
+		func = func
+	}
+
+	buttons.rect[identifier] = setmetatable(buttonTable, buttonMeta)
+	return buttons.rect[identifier]
+end
+
+--Adds a circular button
+function mfdesign.addCircleButton(identifier, x, y, sx, sy, func)
+	checkType(x, "number", "x")
+	checkType(y, "number", "y")
+	checkType(sx, "number", "sx")
+	if func ~= nil then
+		checkType(sy, "number", "sy")
+		checkType(func, "function", "func")
+	else
+		checkType(sy, "function", "func")
+		func = sy
+		sy = sx
+	end
+
+	local buttonTable = {
+		identifier = identifier,
+		type = mfdesign.BUTTON_TYPE_CIRCLE,
+		x = x, y = y, sx = sx, sy = sy,
+		func = func
+	}
+
+	buttons.circle[identifier] = setmetatable(buttonTable, buttonMeta)
+	return buttons.circle[identifier]
+end
+
+--Adds a polygonal button.
+function mfdesign.addPolyButton(identifier, polyTable, func)
+	checkType(polyTable, "table", "polyTable")
+	checkType(func, "function", "func")
+
+	for i = 1, #polyTable do
+		local vertex = polyTable[i]
+		if type(vertex.x) ~= "number" or type(vertex.y) ~= "number" then
+			error("Malformed polygon table", 1)
+		end
+	end
+
+	local buttonTable = {
+		identifier = identifier,
+		type = mfdesign.BUTTON_TYPE_POLY,
+		polyTable = polyTable,
+		func = func
+	}
+
+	buttons.poly[identifier] = setmetatable(buttonTable, buttonMeta)
+	return buttons.poly[identifier]
+end
+
+--Returns the button currently under the user's cursor position or nil.
+local sqrt, acos = math.sqrt, math.acos
+function mfdesign.cursorButton(x, y)
+	for identifier, button in pairs(buttons.rect) do
+		local sx, sy, ex, ey = button.x, button.y, button.x + button.w, button.y + button.h
+
+		if x >= sx and y >= sy and x <= ex and y <= ey then
+			return button
+		end
+	end
+
+	local v1 = Vector(1)
+	for identifier, button in pairs(buttons.circle) do
+		local v2 = Vector(x - button.x, y - button.y)
+
+		local angle = acos((v1.x * v2.x + v1.y * v2.y) / (sqrt(v1.x^2 + v1.y^2) * sqrt(v2.x^2 + v2.y^2)))
+		local radiusAtAngle = sqrt((math.cos(angle) * button.sx)^2 + (math.sin(angle) * button.sy)^2)
+
+		if v2:Length2D() < radiusAtAngle then
+			return button
+		end
+	end
+
+	local l1 = {x, y, math.huge, y}
+	for identifier, button in pairs(buttons.poly) do
+		local intersections = 0
+		for i = 1, #button.polyTable do
+			local p1 = button.polyTable[i]
+			local p2 = button.polyTable[i+1] or button.polyTable[1]
+
+			local l2 = {p1.x, p1.y, p2.x, p2.y}
+			if lineIntersect(l1, l2) then
+				intersections = intersections + 1
+			end
+		end
+
+		if intersections % 2 == 1 then
+			return button
+		end
+	end
+end
+
+local function debugRectButtons()
+	for k, v in pairs(buttons.rect) do
+		render.drawRectOutline(v.x, v.y, v.w, v.h)
+	end
+end
+
+local function debugCircleButtons()
+	for k, v in pairs(buttons.circle) do
+		render.drawCircle(v.x, v.y, v.sx + 1, v.sy + 1)
+	end
+end
+
+local function debugPolyButtons()
+	for k, v in pairs(buttons.poly) do
+		for i = 1, #v.polyTable do
+			local p1 = v.polyTable[i]
+			local p2 = v.polyTable[i+1] or v.polyTable[1]
+			render.drawLine(p1.x, p1.y, p2.x, p2.y)
+		end
+	end
+end
+
+function mfdesign.debugButtons(type)
+	render.setColor(255)
+	render.setTexture()
+	if type ~= nil then
+		if type == mfdesign.BUTTON_TYPE_RECT then
+			debugRectButtons()
+		elseif type == mfdesign.BUTTON_TYPE_CIRCLE then
+			debugCircleButtons()
+		elseif type == mfdesign.BUTTON_TYPE_POLY then
+			debugPolyButtons()
+		else
+			error("Invalid button type", 1)
+		end
+	else
+		debugRectButtons()
+		debugCircleButtons()
+		debugPolyButtons()
+	end
+end
+
+libraries.addToEnvironment("mfdesign", mfdesign)

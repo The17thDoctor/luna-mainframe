@@ -3,9 +3,78 @@
 --@class none
 
 --[[
-	Implements basic drawing functions on top of the standard render library.
+	Implements rendering functions on top of the standard render library.
 
 	It is recommend to keep those libraries getting loaded from shared in order to get updates.
 ]]--
 
 if SERVER then return end
+
+local checkType = libraries.checkType
+
+local mfrender = {}
+mfrender.STATIC = false
+mfrender.DYNAMIC = true
+
+local staticElementsRT = rendertarget.create(true, 1024, 1024)
+
+--Returns the cursor position on a 3D2D plane or the screen
+function mfrender.cursorPos(player, pos, ang, scale)
+	checkType(player, "Player", "player")
+	if render.isEmitter() then
+		checkType(pos, "Vector", "pos")
+		checkType(ang, "Angle", "ang")
+		checkType(scale, "number", "scale")
+
+		--Player's eye position local to the plane
+		local lPPos = worldToLocal(player:eyePos(), Angle(), pos, ang)
+		if lPPos.z < 0 then return end
+
+		local pPos = trace.intersectRayWithPlane(player:eyePos(), player:eyeAngles():Forward(), pos, ang:Up())
+		if pPos == nil then return end
+		local lPos = worldToLocal(pPos, Angle(), pos, ang)
+		lPos.y = -lPos.y
+		lPos = lPos * scale
+
+		return lPos.x, lPos.y
+	else
+		local entity
+		if pos ~= nil then
+			checkType(pos, "Entity", "entity")
+			entity = pos
+		end
+
+		return render.cursorPos(player, entity)
+	end
+end
+
+function mfrender.drawRegularPoly(x, y, r, s, a)
+	local polyTable = {}
+	a = math.rad(a or 0)
+
+	for i = 1, s do
+		local ang = math.pi * 2 / s * i + a
+		local px, py = math.cos(ang), math.sin(ang)
+
+		local u, v = px / 2 + .5, -(py / 2 + .5)
+		polyTable[#polyTable+1] = {x = px * r + x, y = py * r + y, u = u, v = v}
+	end
+
+	render.drawPoly(polyTable)
+end
+
+--Draws the static part of rendering
+function mfrender.drawStaticRender(x, y, w, h)
+	staticElementsRT:draw(x, y, w, h)
+end
+
+--Draws to the static part of rendering
+function mfrender.drawToStaticRender(func)
+	mfrender.STATIC = true
+	mfrender.DYNAMIC = false
+	staticElementsRT:drawToTexture(func)
+	mfrender.STATIC = false
+	mfrender.DYNAMIC = true
+end
+
+libraries.addToEnvironment("mfrender", mfrender)

@@ -85,7 +85,7 @@ end
 
 function getModuleEnvironment(modulePath)
 	--The unique module identifier.
-	local ID = CRC(modulePath)
+	local ID = modulePath
 
 	--Creates suitable identifiers for hooks, callbacks, timers in order to avoid conflicts.
 	local function createID(identifier)
@@ -156,13 +156,17 @@ function getModuleEnvironment(modulePath)
 		--We take care of net locally so we avoid using SF's native net hook.
 		if type:lower() == "net" then type = createID("luna_net") end
 
-		hook.add(type, createID(identifier), function(...)
-			local success = xpcall(callback, errorHandler, ...)
+		if callback ~= nil then
+			hook.add(type, createID(identifier), function(...)
+				local success = xpcall(callback, errorHandler, ...)
 
-			if not success then
-				hook.remove(type, createID(identifier))
-			end
-		end)
+				if not success then
+					hook.remove(type, createID(identifier))
+				end
+			end)
+		else
+			hook(type, createID(identifier))
+		end
 	end
 
 	function localHooks.__call(_, type, identifier, callback)
@@ -468,7 +472,6 @@ function getModuleEnvironment(modulePath)
 			localEnvironment[libraryName] = libraryTable
 		end
 	end
-
 
 	return setmetatable(localEnvironment, environment)
 end
