@@ -30,7 +30,6 @@ bootstrapper.addLibrary("environment")
 	Change it only if you need it and you know what you are doing
 ]]--
 
-
 --Loading all libraries and modules
 bootstrapper.loadAllLibraries()
 bootstrapper.loadAllModules()

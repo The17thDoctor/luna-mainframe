@@ -485,5 +485,13 @@ if SERVER then
 	end
 end
 
+---MODULE NET
+
+function mainframe.sendModuleNet(channel, ...)
+	libraries.checkType(channel, "string", "channel")
+	if channel == "" then error("Channel string must contain characters", 1) end
+	hook.run("modulenet_"..channel, ...)
+end
+
 --Lastly we're adding all written functions into the environment.
 libraries.addToEnvironment("mainframe", mainframe)

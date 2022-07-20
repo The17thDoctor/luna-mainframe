@@ -31,6 +31,10 @@ local function checkType(value, typeToCheck, argumentName, level)
 	end
 end
 
+local function bootSay(...)
+	printColor(Color(150, 150, 255), "[Bootstrapper] >> ", Color(225, 225, 225), ...)
+end
+
 --All loaded libraries, essentials should be loaded first, environment last.
 bootstrapper = {}
 
@@ -60,7 +64,7 @@ function bootstrapper.loadAllModules()
 	local loaded = {}
 
 	for i = 1, #loadingOrder do
-		local scriptPath = "luna/modules/"..loadingOrder[i][1]
+		local scriptPath = "luna/modules/"..loadingOrder[i][1]..".txt"
 		if scripts[scriptPath] ~= nil and not loaded[scriptPath] then
 			local moduleEnvironment = getModuleEnvironment(scriptPath)
 			setfenv(scripts[scriptPath], moduleEnvironment)
@@ -85,6 +89,18 @@ end
 function bootstrapper.setPriority(moduleName, priority)
 	checkType(moduleName, "string", "moduleName")
 	checkType(priority, "number", "priority")
+
+	if SERVER then
+		for i = 1, #loadingOrder do
+			if loadingOrder[i][1] == moduleName then
+				table.remove(loadingOrder, i)
+			end
+
+			if loadingOrder[i][2] == priority then
+				bootSay("Warning, overlapping priorities between '"..moduleName.."' and '"..loadingOrder[i][1].."'.")
+			end
+		end
+	end
 
 	loadingOrder[#loadingOrder+1] = {moduleName, priority}
 end

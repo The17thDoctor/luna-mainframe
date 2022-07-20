@@ -1,6 +1,2 @@
 --@name Minimal Module
 --@author
-
-if CLIENT then
-
-end

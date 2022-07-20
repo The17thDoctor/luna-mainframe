@@ -41,7 +41,6 @@ end
 
 --Keeps people from just indexing values they should probably not
 function moduleMeta.__index(self, key)
-	print(self, key)
 	if type(moduleMeta[key]) == "function" then
 		return moduleMeta[key]
 	else

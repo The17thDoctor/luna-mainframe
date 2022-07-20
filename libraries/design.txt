@@ -13,14 +13,6 @@ if SERVER then return end
 
 local checkType = libraries.checkType
 
-local mfdesign = {}
-local buttons = {
-	rect 	= {},
-	circle 	= {},
-	poly 	= {},
-} --Stores all buttons added by the user.
-
-
 local min, max = math.min, math.max
 --Returns whether two lines intersect
 local function lineIntersect(L1, L2)
@@ -47,6 +39,7 @@ end
 
 ---BUTTONS
 
+local button = {}
 local buttonMeta = {}
 buttonMeta.__index = buttonMeta
 
@@ -56,9 +49,13 @@ local buttons = {
 	poly 	= {}
 }
 
+button.BUTTON_TYPE_RECT = "RECT"
+button.BUTTON_TYPE_POLY = "POLY"
+button.BUTTON_TYPE_CIRCLE = "CIRLE"
+
 --Returns the position of the button, can be based off of a specific vertex for polygons
 function buttonMeta:pos(i)
-	if self.type == mfdesign.BUTTON_TYPE_POLY then
+	if self.type == button.BUTTON_TYPE_POLY then
 		if i ~= nil then
 			checkType(i, "number", "i")
 		end
@@ -79,7 +76,7 @@ end
 function buttonMeta:translate(x, y)
 	checkType(x, "number", "x")
 	checkType(y, "number", "y")
-	if self.type == mfdesign.BUTTON_TYPE_POLY then
+	if self.type == button.BUTTON_TYPE_POLY then
 		for i = 1, #self.polyTable do
 			self.polyTable[i].x = self.polyTable[i].x + x
 			self.polyTable[i].y = self.polyTable[i].y + y
@@ -95,7 +92,7 @@ function buttonMeta:setPos(x, y, i)
 	checkType(x, "number", "x")
 	checkType(y, "number", "y")
 
-	if self.type == mfdesign.BUTTON_TYPE_POLY then
+	if self.type == button.BUTTON_TYPE_POLY then
 		if i ~= nil then
 			checkType(i, "number", "i")
 		end
@@ -131,28 +128,24 @@ function buttonMeta:triggerFunction(...)
 end
 
 function buttonMeta:remove()
-	if self.type == mfdesign.BUTTON_TYPE_RECT then
+	if self.type == button.BUTTON_TYPE_RECT then
 		buttons.rect[self.identifier] = nil
-	elseif self.type == mfdesign.BUTTON_TYPE_POLY then
+	elseif self.type == button.BUTTON_TYPE_POLY then
 		buttons.poly[self.identifier] = nil
-	elseif self.type == mfdesign.BUTTON_TYPE_CIRCLE then
+	elseif self.type == button.BUTTON_TYPE_CIRCLE then
 		buttons.circle[self.identifier] = nil
 	end
 
 	self = nil
 end
 
-mfdesign.BUTTON_TYPE_RECT = "RECT"
-mfdesign.BUTTON_TYPE_POLY = "POLY"
-mfdesign.BUTTON_TYPE_CIRCLE = "CIRLE"
-
 --Clears all buttons from a certain type of all buttons if none provided
-function mfdesign.clearButtons(type)
-	if type == mfdesign.BUTTON_TYPE_RECT then
+function button.clearButtons(type)
+	if type == button.BUTTON_TYPE_RECT then
 		buttons.rect = {}
-	elseif type == mfdesign.BUTTON_TYPE_CIRCLE then
+	elseif type == button.BUTTON_TYPE_CIRCLE then
 		buttons.circle = {}
-	elseif type == mfdesign.BUTTON_TYPE_POLY then
+	elseif type == button.BUTTON_TYPE_POLY then
 		buttons.poly = {}
 	elseif type ~= nil then
 		error("Invalid button type", 1)
@@ -166,12 +159,12 @@ function mfdesign.clearButtons(type)
 end
 
 --Removes a button
-function mfdesign.removeButton(type, identifier)
-	if type == mfdesign.BUTTON_TYPE_RECT then
+function button.removeButton(type, identifier)
+	if type == button.BUTTON_TYPE_RECT then
 		buttons.rect[identifier] = nil
-	elseif type == mfdesign.BUTTON_TYPE_POLY then
+	elseif type == button.BUTTON_TYPE_POLY then
 		buttons.rect[identifier] = nil
-	elseif type == mfdesign.BUTTON_TYPE_CIRCLE then
+	elseif type == button.BUTTON_TYPE_CIRCLE then
 		buttons.rect[identifier] = nil
 	else
 		error("Invalid button type.", 1)
@@ -179,12 +172,12 @@ function mfdesign.removeButton(type, identifier)
 end
 
 --Gets a button given its type and identifier
-function mfdesign.getButton(type, identifier)
-	if type == mfdesign.BUTTON_TYPE_RECT then
+function button.getButton(type, identifier)
+	if type == button.BUTTON_TYPE_RECT then
 		return buttons.rect[identifier]
-	elseif type == mfdesign.BUTTON_TYPE_CIRCLE then
+	elseif type == button.BUTTON_TYPE_CIRCLE then
 		return buttons.circle[identifier]
-	elseif type == mfdesign.BUTTON_TYPE_POLY then
+	elseif type == button.BUTTON_TYPE_POLY then
 		return buttons.poly[identifier]
 	else
 		error("Invalid button type", 1)
@@ -192,7 +185,7 @@ function mfdesign.getButton(type, identifier)
 end
 
 --Adds a rectangular button
-function mfdesign.addRectButton(identifier, x, y, w, h, func)
+function button.addRectButton(identifier, x, y, w, h, func)
 	checkType(x, "number", "x")
 	checkType(y, "number", "y")
 	checkType(w, "number", "w")
@@ -201,7 +194,7 @@ function mfdesign.addRectButton(identifier, x, y, w, h, func)
 
 	local buttonTable = {
 		identifier = identifier,
-		type = mfdesign.BUTTON_TYPE_RECT,
+		type = button.BUTTON_TYPE_RECT,
 		x = x, y = y, w = w, h = h,
 		func = func
 	}
@@ -211,7 +204,7 @@ function mfdesign.addRectButton(identifier, x, y, w, h, func)
 end
 
 --Adds a circular button
-function mfdesign.addCircleButton(identifier, x, y, sx, sy, func)
+function button.addCircleButton(identifier, x, y, sx, sy, func)
 	checkType(x, "number", "x")
 	checkType(y, "number", "y")
 	checkType(sx, "number", "sx")
@@ -226,7 +219,7 @@ function mfdesign.addCircleButton(identifier, x, y, sx, sy, func)
 
 	local buttonTable = {
 		identifier = identifier,
-		type = mfdesign.BUTTON_TYPE_CIRCLE,
+		type = button.BUTTON_TYPE_CIRCLE,
 		x = x, y = y, sx = sx, sy = sy,
 		func = func
 	}
@@ -235,8 +228,8 @@ function mfdesign.addCircleButton(identifier, x, y, sx, sy, func)
 	return buttons.circle[identifier]
 end
 
---Adds a polygonal button.
-function mfdesign.addPolyButton(identifier, polyTable, func)
+--Adds a polygonal button
+function button.addPolyButton(identifier, polyTable, func)
 	checkType(polyTable, "table", "polyTable")
 	checkType(func, "function", "func")
 
@@ -249,7 +242,7 @@ function mfdesign.addPolyButton(identifier, polyTable, func)
 
 	local buttonTable = {
 		identifier = identifier,
-		type = mfdesign.BUTTON_TYPE_POLY,
+		type = button.BUTTON_TYPE_POLY,
 		polyTable = polyTable,
 		func = func
 	}
@@ -258,9 +251,9 @@ function mfdesign.addPolyButton(identifier, polyTable, func)
 	return buttons.poly[identifier]
 end
 
---Returns the button currently under the user's cursor position or nil.
+--Returns the button currently under the user's cursor position
 local sqrt, acos = math.sqrt, math.acos
-function mfdesign.cursorButton(x, y)
+function button.cursorButton(x, y)
 	for identifier, button in pairs(buttons.rect) do
 		local sx, sy, ex, ey = button.x, button.y, button.x + button.w, button.y + button.h
 
@@ -322,15 +315,15 @@ local function debugPolyButtons()
 	end
 end
 
-function mfdesign.debugButtons(type)
+function button.debugButtons(type)
 	render.setColor(255)
 	render.setTexture()
 	if type ~= nil then
-		if type == mfdesign.BUTTON_TYPE_RECT then
+		if type == button.BUTTON_TYPE_RECT then
 			debugRectButtons()
-		elseif type == mfdesign.BUTTON_TYPE_CIRCLE then
+		elseif type == button.BUTTON_TYPE_CIRCLE then
 			debugCircleButtons()
-		elseif type == mfdesign.BUTTON_TYPE_POLY then
+		elseif type == button.BUTTON_TYPE_POLY then
 			debugPolyButtons()
 		else
 			error("Invalid button type", 1)
@@ -342,4 +335,82 @@ function mfdesign.debugButtons(type)
 	end
 end
 
-libraries.addToEnvironment("mfdesign", mfdesign)
+---SCREEN STRUCTURE
+
+local screen = {}
+local screens = {}
+
+function screen.addScreen(path, func)
+	checkType(path, "string", "path")
+	checkType(func, "function", "func")
+
+	local path = path:explode(".")
+	local currentTable = screens
+
+	for i = 1, #path-1 do
+		if currentTable[path[i]] == nil then
+			error("Invalid parent screen : "..table.concat(path, ".", 1, i), 1)
+		end
+	end
+
+	if path[#path] == "" then error("Invalid screen path ending", 1) end
+	currentTable[path[#path]] = {func}
+end
+
+function screen.removeScreen(path)
+	checkType(path, "string", "path")
+
+	local path = path:explode(".")
+	local currentTable = screens
+
+	for i = 1, #path-1 do
+		if currentTable[path[i]] == nil then
+			return
+		end
+	end
+
+	currentTable[path] = nil
+end
+
+function screen.getScreen(path)
+	checkType(path, "string", "path")
+	local path = path:explode(".")
+	local currentTable = screens
+
+	for i = 1, #path do
+		if currentTable[path[i]] == nil then
+			return nil
+		end
+	end
+
+	return currentTable
+end
+
+function screen.getAllScreens()
+	return screens
+end
+
+function screen.setCurrentScreen(path)
+	checkType(path, "string", "path")
+	local path = path:explode(".")
+
+	local currentTable = screens
+	for i = 1, #path do
+		if currentTable[path[i]] == nil then
+			error("Invalid screen path", 1)
+		end
+	end
+
+	local func = currentTable[1]
+	mfrender.drawToStaticRender(func)
+	screen.current = currentTable
+end
+
+function screen.drawCurrentScreen()
+	if screen.current ~= nil and screen.current[1] ~= nil then
+		screen.current[1]()
+	end
+end
+
+libraries.addToEnvironment("screen", screen)
+libraries.addToEnvironment("button", button)
