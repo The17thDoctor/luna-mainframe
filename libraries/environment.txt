@@ -148,9 +148,9 @@ function getModuleEnvironment(modulePath)
 
 	---HOOKS
 	local localHooks = {}
-	localHooks.__index = localHooks
-	localHooks.remove = hook.remove
-	--localHooks.run	= hook.run
+	localHooks.__index	= localHooks
+	localHooks.remove	= hook.remove
+	--localHooks.run		= hook.run
 
 	function localHooks.add(type, identifier, callback)
 		--We take care of net locally so we avoid using SF's native net hook.
