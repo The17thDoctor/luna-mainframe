@@ -150,12 +150,304 @@ local recursiveKey = {
 	"This is my recursive key, its a table so you can't possibly replicate it :^)"
 }
 
+--Stores in the functions for formatting strings.
+local stringFormatters = {}
+
+function mfchat.addStringFormatter(code, func)
+	checkType(code, "string", "code")
+	checkType(func, "function", "func")
+
+	local c = code:explode("[%{%}]", true)
+	if #c > 1 then error("Formatter code should not contain { }", 1) end
+
+	stringFormatters[code] = func
+end
+
+---Standard Chat Formatters
+
+local function numberFormatter(options, values)
+	checkType(values[1], "number")
+
+	local x, y = options[1], options[2]
+	local rounding, format
+	local number = values[1]
+	local formatTable = {}
+
+	if tonumber(x) ~= nil then
+		rounding = math.floor(tonumber(x))
+		if tonumber(y) == nil then
+			format = y
+		else
+			error("Invalid formatting code '"..formatter.."'")
+		end
+	end
+
+	if format == nil then error("Invalid formatting code '"..formatter.."'") end
+
+	if rounding ~= nil then
+		if format == "p" then rounding = rounding + 2 end
+		number = math.round(number, rounding)
+	end
+
+	if format == "s" then
+		splt = tostring(number):explode(".")
+		splt[1] = string.reverse(splt[1])
+		local int, dec = "", splt[2]
+		for i = 1, math.ceil(utf8.len(splt[1])/3) do
+			i = (i-1) * 3 + 1
+			local str = utf8.sub(splt[1], i, i+2)
+			int = str.." "..int
+		end
+
+		int = utf8.sub(int, 1, utf8.len(int)-1)
+
+		if dec ~= nil then
+			number = int.."."..dec
+		end
+
+		formatTable[#formatTable+1] = int
+	elseif format == "p" then
+		formatTable[#formatTable+1] = tostring(number * 100).."%"
+	elseif format:lower() == "t" then
+		if number < 0 then error("Invalid time value (must be above -1)") end
+		local names
+
+		if format == "t" then
+			names = timeUnits.short
+		else
+			names = timeUnits.long
+		end
+
+		local str = ""
+		for i = #timeUnits.span, 1, -1 do
+			if number == 0 then break end
+			local span, name = timeUnits.span[i], names[i]
+			local n = math.floor(number / span)
+
+			if i == 1 then n = number end
+			if rounding ~= nil then
+				n = math.round(n, rounding)
+			end
+
+			if n > 0 then
+				number = number - n * span
+				if format == "T" then
+					if n > 1 then name = name[2] else name = name[1] end
+					str = str..n.." "..name.." "
+				else
+					str = str..n..name
+				end
+			end
+		end
+
+		if format == "T" then
+			str = utf8.sub(str, 1, utf8.len(str)-1)
+		end
+
+		if rounding ~= nil and utf8.getChar(options[1], 1) == "0" then
+			local newsplt = str:explode(".")
+			str = newsplt[1]
+
+			for i = 1, rounding - utf8.len(splt[2]) do
+				newsplt[2] = newsplt[2].."0"
+			end
+
+			str = str.."."..newsplt[2]
+		end
+	end
+
+	local str = tostring(number)
+	if rounding ~= nil and utf8.getChar(options[1], 1) == "0" then
+		local newsplt = str:explode(".")
+		str = newsplt[1]
+		newsplt[2] = newsplt[2] or ""
+
+		for i = 1, rounding - utf8.len(newsplt[2]) do
+			newsplt[2] = newsplt[2].."0"
+		end
+
+		str = str.."."..newsplt[2]
+	end
+
+	return {str}, 1
+end
+
+local function stringFormatter(options, values, currentTable)
+	checkType(values[1], "string")
+
+	local valuesUsed = 1
+	local value = values[1]
+	local formatTable = {}
+	local color, r, g, b = options[1], tonumber(options[2]) or nil, tonumber(options[3]) or 0, tonumber(options[4]) or 0
+
+	if color == nil then
+		formatTable[1] = value
+	else
+		local previousColor = mfchat.color.white
+		for i = #currentTable, 1, -1 do
+			if getmetatable(currentTable[i]) == "Color" then
+				previousColor = currentTable[i]
+				break
+			end
+		end
+
+		if mfchat.color[color] ~= nil then
+			formatTable[1] = mfchat.color[color]
+		elseif r ~= nil then
+			formatTable[1] = Color(r, g, b)
+		else
+			checkType(values[2], "Color")
+			formatTable[1] = values[2]
+			valuesUsed = 2
+		end
+
+		formatTable[2] = value
+		formatTable[3] = previousColor
+	end
+
+	return formatTable, valuesUsed
+end
+
+local function angleFormatter(options, values, currentTable)
+	checkType(values[1], "Angle")
+
+	local formatTable = {}
+	local value = values[1]
+	local previousColor = mfchat.color.white
+
+	for i = #currentTable, 1, -1 do
+		if getmetatable(currentTable[i]) == "Color" then
+			previousColor = currentTable[i]
+			break
+		end
+	end
+
+	local p, y, r = value.p, value.y, value.r
+
+	if tonumber(options[1]) ~= nil then
+		p = mfchat.parseMessage("{d "..options[1].."}", p)[1]
+		y = mfchat.parseMessage("{d "..options[1].."}", y)[1]
+		r = mfchat.parseMessage("{d "..options[1].."}", r)[1]
+	end
+
+	local formattedTable = mfchat.parseMessage("{color}Angle({s green}, {s green}, {s green})", previousColor, p, y, r)
+
+	for i = 1, #formattedTable do
+		formatTable[#formatTable+1] = formattedTable[i]
+	end
+
+	return formatTable, 1
+end
+
+local function vectorFormatter(options, values, currentTable)
+	checkType(values[1], "Vector")
+
+	local formatTable = {}
+	local value = values[1]
+	local previousColor = mfchat.color.white
+
+	for i = #currentTable, 1, -1 do
+		if getmetatable(currentTable[i]) == "Color" then
+			previousColor = currentTable[i]
+			break
+		end
+	end
+
+	local x, y, z = currentValue.x, currentValue.y, currentValue.z
+
+	if tonumber(options[1]) ~= nil then
+		x = mfchat.parseMessage("{d "..options[1].."}", x)[1]
+		y = mfchat.parseMessage("{d "..options[1].."}", y)[1]
+		z = mfchat.parseMessage("{d "..options[1].."}", z)[1]
+	end
+
+	local formattedTable = mfchat.parseMessage("{color}Vector({s green}, {s green}, {s green})", previousColor, x, y, z)
+
+	for i = 1, #formattedTable do
+		formatTable[#formatTable+1] = formattedTable[i]
+	end
+
+	return formatTable, 1
+end
+
+local function entityFormatter(options, values, currentTable)
+	checkType(values[1], "Entity")
+	local value = values[1]
+
+	if not IsValid(value) then error("Invalid entity") end
+	local previousColor = mfchat.color.white
+	for i = #currentTable, 1, -1 do
+		if getmetatable(currentTable[i]) == "Color" then
+			previousColor = currentTable[i]
+			break
+		end
+	end
+
+	local id, entClass = currentValue:index(), currentValue:class()
+	local formattedTable = mfchat.parseMessage("{color}[{s green}] {s}", previousColor, tostring(index), entClass)
+	return formattedTable, 1
+end
+
+local function entityAltFormatter(options, values, currentTable)
+	checkType(values[1], "Entity")
+	local value = values[1]
+
+	if not IsValid(value) then error("Invalid entity") end
+	return {value:class()}, 1
+end
+
+local function entityNiceFormatter(options, values, currentTable)
+	checkType(values[1], "Entity")
+	local value = values[1]
+
+	if not IsValid(value) then error("Invalid entity") end
+	return {value:getPrintName() or value:class()}, 1
+end
+
+local function playerFormatter(options, values, currentTable)
+	checkType(values[1], "Player")
+	if not IsValid(values[1]) then error("Invalid player entity", 1) end
+	return {values[1]:name()}, 1
+end
+
+local function playerAltFormatter(options, values, currentTable)
+	checkType(values[1], "Player")
+	local player = values[1]
+
+	if not IsValid(player) then error("Invalid player entity", 1) end
+	local previousColor = mfchat.color.white
+	for i = #currentTable, 1, -1 do
+		if getmetatable(currentTable[i]) == "Color" then
+			previousColor = currentTable[i]
+			break
+		end
+	end
+
+	return {
+		player:getTeamColor(),
+		player:name(),
+		previousColor
+	}, 1
+end
+
+mfchat.addStringFormatter("d", numberFormatter)
+mfchat.addStringFormatter("s", stringFormatter)
+mfchat.addStringFormatter("a", angleFormatter)
+mfchat.addStringFormatter("v", vectorFormatter)
+mfchat.addStringFormatter("e", entityFormatter)
+mfchat.addStringFormatter("E", entityAltFormatter)
+mfchat.addStringFormatter("en", entityNiceFormatter)
+mfchat.addStringFormatter("p", playerFormatter)
+mfchat.addStringFormatter("P", playerAltFormatter)
+
 function mfchat.parseMessage(message, ...)
 	local words, formatters = explodeNoLoss(message, "\\?%b{}")
 	local messageTable = {}
-	local values = {...}
 	local recursive = false
+	local values = {...}
 	local level = 0
+	local count = 1
+
 	--This checks if the call is coming from a recursive call.
 	--If it is then all of the message table will be turned into a string.
 	if values[1] == recursiveKey then
@@ -167,15 +459,14 @@ function mfchat.parseMessage(message, ...)
 
 	messageTable[1] = words[1]
 
-	local count = 1
+
 	for i = 1, #formatters do
 		local formatter = utf8.sub(formatters[i], 2, utf8.len(formatters[i])-1)
 
 		local _, recursiveFormatters = explodeNoLoss(formatter, "\\?%b{}")
 		if #recursiveFormatters > 0 then
-			local newFormatter, countOffset = mfchat.parseMessage(formatter, recursiveKey, level, ...)
+			local newFormatter = mfchat.parseMessage(formatter, recursiveKey, level, ...)
 			formatter = newFormatter
-			count = count + countOffset
 		end
 
 		local components = formatter:explode(" ")
@@ -183,251 +474,18 @@ function mfchat.parseMessage(message, ...)
 		if utf8.getChar(formatters[i], 1) == "\\" then
 			messageTable[#messageTable+1] = utf8.sub(formatters[i], 2)
 		else
-			local currentValue = values[count]
-			if components[1] == "d" then
-				checkType(currentValue, "number", "value #"..count, level)
-				local x, y = components[2], components[3]
-				local rounding, format
+			if stringFormatters[components[1]] ~= nil then
+				local code = components[1]
+				table.remove(components, 1)
+				local formattedTable, toRemove = stringFormatters[code](components, values, messageTable)
 
-				if tonumber(x) ~= nil then
-					rounding = math.floor(tonumber(x))
-					if tonumber(y) == nil then
-						format = y
-					else
-						error("Invalid formatting code '"..formatter.."'", 1)
-					end
-				else
-					format = x
-					if y ~= nil then
-						error("Invalid formatting code '"..formatter.."'", 1)
-					end
+				for i = 1, toRemove do
+					table.remove(values, 1)
 				end
-
-				local number = currentValue
-				if rounding ~= nil then
-					if format ~= nil and format == "p" then rounding = rounding + 2 end
-					number = math.round(number, rounding)
-				end
-
-				if format ~= nil then
-					if format == "s" then
-						splt = tostring(number):explode(".")
-						splt[1] = string.reverse(splt[1])
-						local int, dec = "", splt[2]
-						for i = 1, math.ceil(utf8.len(splt[1])/3) do
-							i = (i-1) * 3 + 1
-							local str = utf8.sub(splt[1], i, i+2)
-							int = str.." "..int
-						end
-
-						int = utf8.sub(int, 1, utf8.len(int)-1)
-
-						if dec ~= nil then
-							number = int.."."..dec
-						else
-							number = int
-						end
-
-						messageTable[#messageTable+1] = number
-					elseif format == "p" then
-						number = number * 100
-						messageTable[#messageTable+1] = tostring(number).."%"
-					elseif format == "t" or format == "T" then
-						if number < 0 then error("Invalid time value (must be above -1)", 1) end
-						local names
-
-						if format == "t" then
-							names = timeUnits.short
-						else
-							names = timeUnits.long
-						end
-
-						local str = ""
-						for i = #timeUnits.span, 1, -1 do
-							if number == 0 then break end
-							local span, name = timeUnits.span[i], names[i]
-							local n = math.floor(number / span)
-
-							if i == 1 then n = number end
-							if rounding ~= nil then
-								n = math.round(n, rounding)
-							end
-
-							if n > 0 then
-								number = number - n * span
-								if format == "T" then
-									if n > 1 then name = name[2] else name = name[1] end
-									str = str..n.." "..name.." "
-								else
-									str = str..n..name
-								end
-							end
-						end
-
-						if format == "T" then
-							str = utf8.sub(str, 1, utf8.len(str)-1)
-						end
-
-						if rounding ~= nil and utf8.getChar(components[2], 1) == "0" then
-							local newsplt = str:explode(".")
-							str = newsplt[1]
-
-							for i = 1, rounding - utf8.len(splt[2]) do
-								newsplt[2] = newsplt[2].."0"
-							end
-
-							str = str.."."..newsplt[2]
-						end
-						messageTable[#messageTable+1] = str
-					else
-						error("Invalid formatting code '"..formatter.."'", 1)
-					end
-				else
-					local str = tostring(number)
-					if rounding ~= nil and utf8.getChar(components[2], 1) == "0" then
-						local newsplt = str:explode(".")
-						str = newsplt[1]
-						newsplt[2] = newsplt[2] or ""
-
-						for i = 1, rounding - utf8.len(newsplt[2]) do
-							newsplt[2] = newsplt[2].."0"
-						end
-
-						str = str.."."..newsplt[2]
-					end
-
-					messageTable[#messageTable+1] = str
-				end
-
-				count = count + 1
-			elseif components[1] == "s" then
-				checkType(currentValue, "string", "value #"..count, level)
-
-				local color, r, g, b = components[2], tonumber(components[3]) or nil, tonumber(components[4]) or 0, tonumber(components[5]) or 0
-
-				if color == nil then
-					messageTable[#messageTable+1] = currentValue
-				else
-					local previousColor = mfchat.color.white
-					for i = #messageTable, 1, -1 do
-						if getmetatable(messageTable[i]) == "Color" then
-							previousColor = messageTable[i]
-							break
-						end
-					end
-
-					if mfchat.color[color] ~= nil then
-						messageTable[#messageTable+1] = mfchat.color[color]
-						messageTable[#messageTable+1] = currentValue
-					elseif r ~= nil then
-						messageTable[#messageTable+1] = Color(r, g, b)
-						messageTable[#messageTable+1] = currentValue
-					else
-						checkType(values[count+1], "Color", "value #"..count+1, level)
-						messageTable[#messageTable+1] = values[count+1]
-						messageTable[#messageTable+1] = currentValue
-						count = count + 1
-					end
-
-					messageTable[#messageTable+1] = previousColor
-				end
-				count = count + 1
-			elseif components[1] == "a" then
-				checkType(currentValue, "Angle", "value #"..count, level)
-				local previousColor = mfchat.color.white
-				for i = #messageTable, 1, -1 do
-					if getmetatable(messageTable[i]) == "Color" then
-						previousColor = messageTable[i]
-						break
-					end
-				end
-
-				local p, y, r = currentValue.p, currentValue.y, currentValue.r
-
-				if tonumber(components[2]) ~= nil then
-					p = mfchat.parseMessage("{d "..components[2].."}", p)[1]
-					y = mfchat.parseMessage("{d "..components[2].."}", y)[1]
-					r = mfchat.parseMessage("{d "..components[2].."}", r)[1]
-				end
-
-				local formattedTable = mfchat.parseMessage("{color}Angle({s green}, {s green}, {s green})", previousColor, p, y, r)
 
 				for i = 1, #formattedTable do
 					messageTable[#messageTable+1] = formattedTable[i]
 				end
-
-				count = count + 1
-
-				count = count + 1
-			elseif components[1] == "v" then
-				checkType(currentValue, "Vector", "value #"..count, level)
-				local previousColor = mfchat.color.white
-				for i = #messageTable, 1, -1 do
-					if getmetatable(messageTable[i]) == "Color" then
-						previousColor = messageTable[i]
-						break
-					end
-				end
-
-				local x, y, z = currentValue.x, currentValue.y, currentValue.z
-
-				if tonumber(components[2]) ~= nil then
-					x = mfchat.parseMessage("{d "..components[2].."}", x)[1]
-					y = mfchat.parseMessage("{d "..components[2].."}", y)[1]
-					z = mfchat.parseMessage("{d "..components[2].."}", z)[1]
-				end
-
-				local formattedTable = mfchat.parseMessage("{color}Vector({s green}, {s green}, {s green})", previousColor, x, y, z)
-
-				for i = 1, #formattedTable do
-					messageTable[#messageTable+1] = formattedTable[i]
-				end
-
-				count = count + 1
-			elseif components[1] == "e" or components[1] == "E" or components[1] == "en" then
-				checkType(currentValue, "Entity", "value #"..count, level)
-				if not IsValid(currentValue) then error("Invalid entity", 1) end
-				local previousColor = mfchat.color.white
-				for i = #messageTable, 1, -1 do
-					if getmetatable(messageTable[i]) == "Color" then
-						previousColor = messageTable[i]
-						break
-					end
-				end
-
-				if components[1] == "e" then
-					local id, entClass = currentValue:index(), currentValue:class()
-					local formattedTable = mfchat.parseMessage("{color}[{s green}] {s}", previousColor, tostring(index), entClass)
-
-					for i = 1, #formattedTable do
-						messageTable[#messageTable+1] = formattedTable[i]
-					end
-				elseif components[1] == "E" then
-					messageTable[#messageTable+1] = currentValue:class()
-				else
-					local name =  modules.lookupName(currentValue:class()) or currentValue:class()
-					messageTable[#messageTable+1] = name
-				end
-				count = count + 1
-			elseif components[1] == "p" or components[1] == "P" then
-				checkType(currentValue, "Player", "value #"..count, level)
-				if not IsValid(currentValue) then error("Invalid player entity", 1) end
-				local previousColor = mfchat.color.white
-				for i = #messageTable, 1, -1 do
-					if getmetatable(messageTable[i]) == "Color" then
-						previousColor = messageTable[i]
-						break
-					end
-				end
-
-				if components[1] == "p" then
-					messageTable[#messageTable+1] = currentValue:name()
-				else
-					messageTable[#messageTable+1] = currentValue:getTeamColor()
-					messageTable[#messageTable+1] = currentValue:name()
-					messageTable[#messageTable+1] = previousColor
-				end
-				count = count + 1
 			elseif mfchat.color[components[1]] ~= nil or components[1] == "color" then
 				if mfchat.color[components[1]] ~= nil then
 					messageTable[#messageTable+1] = mfchat.color[components[1]]
@@ -443,7 +501,7 @@ function mfchat.parseMessage(message, ...)
 					end
 				end
 			else
-				error("Invalid formatting code '"..formatter.."'", 1)
+				error("Unknown string formatter: "..components[1]..".", level + 1)
 			end
 		end
 
@@ -455,7 +513,7 @@ function mfchat.parseMessage(message, ...)
 		if success then
 			return newMessageTable, count-1
 		else
-			error("Invalid recursive formatting codes.", level)
+			error("Invalid recursive formatting codes.", level + 1)
 		end
 	end
 
@@ -463,7 +521,6 @@ function mfchat.parseMessage(message, ...)
 end
 
 local tellingQueue = {}
-
 local function startQueueEmptying()
 	timer.create("Queue Emptying", 0.25, 0, function()
 		local nextTell = tellingQueue[1]
@@ -557,6 +614,94 @@ function mfchat.error(player, message, ...)
 			startQueueEmptying()
 		end
 	end
+end
+
+---Commands
+
+local commands = {}
+
+function mfchat.addCommand(pattern, func, varNameValues)
+	checkType(pattern, "string", "pattern")
+	checkType(func, "function", "func")
+
+	if varNameValues ~= nil then
+		checkType(varNameValues, "table", "name and values")
+
+		for i = 1, #varNameValues do
+			checkType(varNameValues[i], "table", "name and value N°"..i)
+		end
+	end
+
+	commands[#commands+1] = {
+		pattern = pattern,
+		func = func,
+		varNameValues = varNameValues
+	}
+end
+
+local function makeErrorMessage(player, pattern, results, i, expectedType)
+	for j = 1, #results do
+		local str = "{s}"
+
+		if j == i then
+			str = "{s orange}"
+		end
+
+		pattern = string.gsub(pattern, "%b()", str, 1)
+	end
+
+	results[#results+1] = expectedType
+
+	mfchat.error(player, "Error in command : '"..pattern.."': expected a {s blue}.", unpack(results))
+end
+
+function mfchat.parseCommand(player, message)
+	table.sort(commands, function(a, b)
+		return #a.pattern:explode(" ") > #b.pattern:explode(" ")
+	end)
+
+	for i = 1, #commands do
+		local pattern, func, vnv = commands[i].pattern, commands[i].func, commands[i].varNameValues
+		local result = {string.find(message, pattern)}
+
+		if #result > 0 then
+			table.remove(result, 1)
+			table.remove(result, 1)
+
+			local variables = {}
+			for i = 1, #result do
+				local kv = vnv[i]
+
+				if kv ~= nil then
+					local k, v = kv[1], kv[2]
+
+					if v == "player" then
+						local ply = find.playerByName(result[i])
+						if IsValid(ply) then
+							variables[k] = ply
+						else
+							makeErrorMessage(player, pattern, result, i, "playername")
+							return false, "error in command"
+						end
+					elseif v == "number" then
+						local nb = tonumber(result[i])
+						if nb ~= nil then
+							variables[k] = nb
+						else
+							makeErrorMessage(player, pattern, result, i, "number")
+							return false, "error in command"
+						end
+					end
+				else
+					variables[#variables+1] = result[i]
+				end
+			end
+
+			return func, variables
+		end
+	end
+
+	return false, "no matching command"
 end
 
 libraries.addToEnvironment("mfchat", mfchat)

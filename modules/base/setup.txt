@@ -1,0 +1,68 @@
+--@name Luna Mainframe | Module | Setup
+--@author The17thDoctor
+
+if SERVER then
+
+	--Settings
+	mainframe.addSetting("Chat Prefix", mainframe.SETTING_TYPE_STRING, "Luna", {length = 20})
+	mainframe.addSetting("Command Prefix", mainframe.SETTING_TYPE_WORD, "luna", {length = 20})
+
+	--Permissions
+	mainframe.registerPermission("commands", true)
+
+	---Chat Control
+
+	--Checks that the message starts with the good prefix for the right player.
+	local function prefixized(message, player)
+		local longPrefix = "/"..mainframe.getSetting("Command Prefix", "value")
+		local shortPrefix = utf8.sub(longPrefix, 1, 2)
+
+		local trialPrefix = message:explode("%s", true)[1]:lower()
+
+		if player == ents.owner() then
+			if trialPrefix == longPrefix or trialPrefix == shortPrefix then
+				return true, utf8.sub(message, utf8.len(trialPrefix) + 2)
+			end
+		elseif player:getPermissions() ~= false then
+			local segments = trialPrefix:explode("-")
+			local newTrialPrefix = table.concat(segments, "-", 1, #segments-1)
+			local playername = segments[#segments]
+
+			if find.playerByName(playername) == ents.owner() and (newTrialPrefix == longPrefix or newTrialPrefix == shortPrefix) then
+				return true, utf8.sub(message, utf8.len(trialPrefix) + 2)
+			end
+		end
+
+		return false
+	end
+
+	local function chatListener(message, player)
+		local valid, message = prefixized(message, player)
+
+		if valid then
+			if not player:isPermitted("commands") then
+				mfchat.error(player, "{s color} are not permitted to use chat commands.", "You", player:getTeamColor())
+			end
+
+			local func, results = mfchat.parseCommand(player, message)
+
+			if func then
+				func(player, results)
+			elseif results == "no matching command" then
+				mfchat.error(player, "Unknown command.")
+			end
+
+			return true
+		end
+	end
+
+	chat.listen(chatListener)
+
+	local function removeChatListener()
+		chat.stop(chatListener)
+	end
+
+	mainframe.addToGlobalEnvironment(removeChatListener, "removeChatListener")
+else
+
+end

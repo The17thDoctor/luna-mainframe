@@ -83,6 +83,8 @@ function errorHandler(errorMessage)
 	end)
 end
 
+local checkType = libraries.checkType
+
 function getModuleEnvironment(modulePath)
 	--The unique module identifier.
 	local ID = modulePath
@@ -150,27 +152,55 @@ function getModuleEnvironment(modulePath)
 	local localHooks = {}
 	localHooks.__index	= localHooks
 	localHooks.remove	= hook.remove
-	--localHooks.run		= hook.run
 
-	function localHooks.add(type, identifier, callback)
-		--We take care of net locally so we avoid using SF's native net hook.
-		if type:lower() == "net" then type = createID("luna_net") end
-
-		if callback ~= nil then
-			hook.add(type, createID(identifier), function(...)
-				local success = xpcall(callback, errorHandler, ...)
-
-				if not success then
-					hook.remove(type, createID(identifier))
-				end
-			end)
+	function localHooks.run(hookName, ...)
+		checkType(hookName, "string", "hookName")
+		hookName = hookName:lower()
+		if hookName == "net" then
+			hook.run(createID("luna_net"))
 		else
-			hook(type, createID(identifier))
+			hook.run(hookName)
 		end
 	end
 
-	function localHooks.__call(_, type, identifier, callback)
-		localHooks.add(type, createID(identifier), callback)
+	function localHooks.add(hookName, identifier, callback)
+		checkType(hookName, "string", "hookName")
+		checkType(identifier, "string", "identifier")
+		checkType(callback, "function", "callback")
+
+		--We take care of net locally so we avoid using SF's native net hook.
+		if hookName:lower() == "net" then hookName = createID("luna_net") end
+
+		if callback ~= nil then
+			hook.add(hookName, createID(identifier), function(...)
+				local success = xpcall(callback, errorHandler, ...)
+
+				if not success then
+					hook.remove(hookName, createID(identifier))
+
+					if hookName:lower() == "render" and CLIENT then
+						local cameras = render.getCameraStack()
+						for i = 1, #cameras do
+							if cameras[i] == render.CAM_3D2D then
+								render.end3D2D()
+							else
+								render.end3D()
+							end
+						end
+					end
+				end
+			end)
+		else
+			hook(hookName, createID(identifier))
+		end
+	end
+
+	function localHooks.__call(_, hookName, identifier, callback)
+		checkType(hookName, "string", "hookName")
+		checkType(identifier, "string", "identifier")
+		checkType(callback, "function", "callback")
+
+		localHooks.add(hookName, createID(identifier), callback)
 	end
 
 	environment.hook = {}

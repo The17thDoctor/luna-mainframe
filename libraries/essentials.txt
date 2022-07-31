@@ -14,6 +14,8 @@
 
 --This is the global mainframe library
 mainframe = {}
+local global = {}
+
 --This is the global library-wide library, implementing functions for libraries only to use.
 libraries = {
 	environment = {},
@@ -31,6 +33,7 @@ local entityMetatableList = {
 --Throws an error if the type of the given variable doesnt match the type to check.
 function libraries.checkType(value, typeToCheck, argumentName, level)
 	level = level or 0
+
 	if typeToCheck == "Entity" then
 		for i = 1, #entityMetatableList do
 			if type(value) == entityMetatableList[i] then
@@ -38,13 +41,13 @@ function libraries.checkType(value, typeToCheck, argumentName, level)
 			end
 		end
 
-		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
+		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 3 + level)
 	elseif typeToCheck == "Color" then
 		if getmetatable(value) ~= "Color" then
-			error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
+			error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 3 + level)
 		end
 	elseif type(value) ~= typeToCheck then
-		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 2 + level)
+		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 3 + level)
 	end
 end
 
@@ -66,6 +69,11 @@ end
 
 ---MAINFRAME FUNCTIONS
 
+function mainframe.addToGlobalEnvironment(var, varName)
+	checkType(varName, "string", "varName")
+	global[var] = var
+end
+
 if SERVER then
 	---WHITELIST & PERMISSIONS
 
@@ -73,6 +81,8 @@ if SERVER then
 	mainframe.blacklist		= {}
 	mainframe.permalist		= {}
 	mainframe.permissions 	= {}
+
+	local playerMeta = starfall.getTypeDef("Player")
 
 	local function checkValidPlayer(player)
 		if not IsValid(player) or not player:isPlayer() then error("Invalid player entity", 2) end
@@ -97,6 +107,18 @@ if SERVER then
 		checkValidPlayer(player)
 		if player == ents.owner() then return true end
 		return mainframe.permalist[player:steamID()] ~= nil
+	end
+
+	function playerMeta:isWhitelisted()
+		return mainframe.isWhitelisted(self)
+	end
+
+	function playerMeta:isBlacklisted()
+		return mainframe.isBlacklisted(self)
+	end
+
+	function playerMeta:isPermalisted()
+		return mainframe.isPermalisted(self)
 	end
 
 	--Adds a player to the whitelist..
@@ -173,9 +195,33 @@ if SERVER then
 		return true
 	end
 
+	function playerMeta:addToWhitelist()
+		return mainframe.addToWhitelist(self)
+	end
+
+	function playerMeta:removeFromWhitelist()
+		return mainframe.removeFromWhitelist(self)
+	end
+
+	function playerMeta:addToBlacklist()
+		return mainframe.addToBlacklist(self)
+	end
+
+	function playerMeta:removeFromBlacklist()
+		return mainframe.removeFromBlacklist(self)
+	end
+
+	function playerMeta:addToPermalist()
+		return mainframe.addToPermalist(self)
+	end
+
+	function playerMeta:removeFromPermalist()
+		return mainframe.removeFromPermalist(self)
+	end
+
 	--Registers a new permission to the permission tree
 	function mainframe.registerPermission(path, allowedByDefault)
-		if utf8.len(path) ~= string.len(path) then error("Permission path must be ASCII", 1) end
+		if utf8.len(path) ~= string.len(path) then error("Permission path must be ASCII", 2) end
 		path = path:lower()
 		local nodes = path:explode(".")
 
@@ -186,7 +232,7 @@ if SERVER then
 		local currentPermission = nodes[1]
 		for i = 1, #nodes-1 do
 			if mainframe.permissions[currentPermission] == nil then
-				error("Missing parent permission '"..currentPermission.."'", 1)
+				error("Missing parent permission '"..currentPermission.."'", 2)
 			end
 
 			currentPermission = currentPermission.."."..nodes[i+1]
@@ -215,6 +261,10 @@ if SERVER then
 		end
 	end
 
+	function playerMeta:getPermissions()
+		return mainframe.getPermissions(self)
+	end
+
 	--Returns whether a player has been granted a specific permission
 	function mainframe.isPermittedForPlayer(player, permission)
 		if mainframe.permissions[permission] == nil then error("Unknown permission '"..permission.."'", 1) end
@@ -234,6 +284,10 @@ if SERVER then
 		else
 			return false
 		end
+	end
+
+	function playerMeta:isPermitted(permission)
+		return mainframe.isPermittedForPlayer(self, permission)
 	end
 
 	---SAVE FILE
@@ -334,7 +388,10 @@ if SERVER then
 	local BOOLEAN = mainframe.SETTING_TYPE_BOOLEAN
 
 	local allowedSettingTypes = {
-		WORD, NUMBER, STRING, BOOLEAN
+		[mainframe.SETTING_TYPE_WORD]		= true,
+		[mainframe.SETTING_TYPE_NUMBER]		= true,
+		[mainframe.SETTING_TYPE_STRING]		= true,
+		[mainframe.SETTING_TYPE_BOOLEAN]	= true,
 	}
 
 
@@ -343,13 +400,13 @@ if SERVER then
 		checkType(name, "string", "name")
 		sType = sType:upper()
 		extras = extras or {}
-		if allowedSettingTypes[sType] == nil then error("Unknown setting type", 1) end
+		if allowedSettingTypes[sType] == nil then error("Unknown setting type", 2) end
 		if sType == "NUMBER" and type(default) ~= "number" then
-			error("Invalid default value (expected number, got "..type(default)..")", 1)
+			error("Invalid default value (expected number, got "..type(default)..")", 2)
 		elseif (sType == "WORD" or sType == "STRING") and type(default) ~= "string" then
-			error("Invalid default value (expected string, got "..type(default)..")", 1)
+			error("Invalid default value (expected string, got "..type(default)..")", 2)
 		elseif sType == "BOOLEAN" and type(default) ~= "boolean" then
-			error("Invalid default value (expected boolean, got "..type(default)..")", 1)
+			error("Invalid default value (expected boolean, got "..type(default)..")", 2)
 		end
 
 		if sType == "NUMBER" then
@@ -363,14 +420,14 @@ if SERVER then
 
 			if extras.choices ~= nil then
 				if extras.min ~= nil or extras.max ~= nil then
-					error("Cannot have a choice and a range", 1)
+					error("Cannot have a choice and a range", 2)
 				elseif not extras.choices[default] then
-					error("Default value not part of the choices", 1)
+					error("Default value not part of the choices", 2)
 				end
 			elseif extras.min ~= nil and default < extras.min then
-				error("Default value under the minimum set value", 1)
+				error("Default value under the minimum set value", 2)
 			elseif extras.max ~= nil and default > extras.max then
-				error("Default value over the maximum set value", 1)
+				error("Default value over the maximum set value", 2)
 			end
 		elseif sType == "WORD" then
 			if extras.length ~= nil then
@@ -379,14 +436,14 @@ if SERVER then
 
 			if extras.choices ~= nil then
 				if extras.length ~= nil then
-					error("Cannot have a length limit and a choice", 1)
+					error("Cannot have a length limit and a choice", 2)
 				elseif not extras.choices[default] then
-					error("Default value not part of the choices", 1)
+					error("Default value not part of the choices", 2)
 				end
 			elseif extras.length ~= nil and utf8.len(default) > extras.length then
-				error("Default value over the maximum length", 1)
+				error("Default value over the maximum length", 2)
 			elseif #default:explode("%s", true) > 1 then
-				error("Default value contains multiple words (change the setting type to STRING ?)", 1)
+				error("Default value contains multiple words (change the setting type to STRING ?)", 2)
 			end
 		elseif sType == "STRING" then
 			if extras.length ~= nil then
@@ -395,12 +452,12 @@ if SERVER then
 
 			if extras.choices ~= nil then
 				if extras.length ~= nil then
-					error("Cannot have a length limit and a choice", 1)
+					error("Cannot have a length limit and a choice", 2)
 				elseif not extras.choices[default] then
-					error("Default value not part of the choices", 1)
+					error("Default value not part of the choices", 2)
 				end
 			elseif extras.length ~= nil and utf8.len(default) > extras.length then
-				error("Default value over the maximum length", 1)
+				error("Default value over the maximum length", 2)
 			end
 		end
 
@@ -479,7 +536,7 @@ if SERVER then
 
 	--Sets a setting back to its default value given its name
 	function mainframe.clearSetting(name)
-		if mainframe.settings[name] == nil then error("Unknown setting", 1) end
+		if mainframe.settings[name] == nil then error("Unknown setting", 2) end
 		mainframe.settings[name].value = mainframe.settings[name].default
 		return mainframe.saveFile()
 	end
@@ -489,9 +546,10 @@ end
 
 function mainframe.sendModuleNet(channel, ...)
 	libraries.checkType(channel, "string", "channel")
-	if channel == "" then error("Channel string must contain characters", 1) end
+	if channel == "" then error("Channel string must contain characters", 2) end
 	hook.run("modulenet_"..channel, ...)
 end
 
 --Lastly we're adding all written functions into the environment.
+libraries.addToEnvironment("global", global)
 libraries.addToEnvironment("mainframe", mainframe)
