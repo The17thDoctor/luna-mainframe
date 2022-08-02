@@ -1,0 +1,44 @@
+--@name Luna Mainframe | Module | Ship Systems Control
+--@author The17thDoctor
+
+if CLIENT then return end
+
+local function standardToggler(module, enable)
+	if not IsValid(module) then
+		return false, "module not found"
+	elseif not IsValid(ents.self():getCore()) then
+		return false, "core not found"
+	elseif not IsValid(ents.self():getNode()) then
+		return false, "node not found"
+	end
+
+	local extraData = module:extraData()
+	local activator = extraData.activator or "Activate"
+	local active = extraData.active or "Active"
+
+	if module:isUnique() then
+		local wirelink = module:getWirelink()
+
+		if enable then
+			if wirelink[active] then
+				return false, "already active"
+			elseif wirelink["State"] == "Awaiting Activation" then
+				return false, "awaiting activation"
+			end
+
+			wirelink[activator] = 1
+			return true
+		else
+			if not wirelink[active] then
+				return false, "already inactive"
+			end
+
+			wirelink[activator] = 0
+			return true
+		end
+	else
+
+	end
+end
+
+Module("ship_core", {entity = "Ship Core", system = "Plating"}, true, true, standardToggler, {activator = "Enable Plating", active = "Plating Enabled"})

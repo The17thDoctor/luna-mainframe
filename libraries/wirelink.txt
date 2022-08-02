@@ -15,27 +15,37 @@ local checkType = libraries.checkType
 local mfwire = {}
 local libMeta = {}
 local moduleMeta = {}
+local modules = {}
 libMeta.__index = libMeta
 
-function libMeta.__call(_, mClass, names, unique, toggleable, togglerFunc)
+function libMeta.__call(_, mClass, names, unique, toggleable, togglerFunc, extraData)
 	checkType(mClass, "string", "class")
 	checkType(names, "table", "names")
 	checkType(unique, "boolean", "unique")
 	checkType(toggleable, "boolean", "toggleable")
 	checkType(togglerFunc, "function", "togglerFunc")
 
+	if extraData ~= nil then
+		checkType(extraData, "table", "extraData")
+	else
+		extraData = {}
+	end
+
 	if names.system == nil then error("Missing module system name", 1)
 	elseif names.entity == nil then error("Missing module entity name", 1) end
 
-	local module = {
+	local moduleTable = {
 		moduleClass = mClass,
 		moduleNames = names,
 		moduleUnique = unique,
 		moduleToggleable = toggleable,
 		moduleTogglerFunc = togglerFunc,
+		moduleExtraData = extraData,
 	}
 
-	return setmetatable(module, moduleMeta)
+	local module = setmetatable(moduleTable, moduleMeta)
+	modules[mClass] = module
+	return module
 end
 
 
@@ -76,9 +86,8 @@ function moduleMeta:toggleable()
 	return self.moduleToggleable
 end
 
---Alias to moduleMeta:toggleable()
-function moduleMeta:canBeToggled()
-	return self:toggleable()
+function moduleMeta:extraData()
+	return self.moduleExtraData
 end
 
 --Enables all entities found under the module's class
@@ -147,11 +156,60 @@ function moduleMeta:isValid()
 end
 
 function moduleMeta:__tostring()
-	return "Module ["..self.class.."]"
+	return "Module ["..self.moduleClass.."]"
 end
 
 function moduleMeta:__concat()
 	return tostring(self)
+end
+
+function mfwire.getModuleByClass(moduleClass)
+	checkType(moduleClass, "string", "class")
+	return modules[moduleClass] or nil
+end
+
+function mfwire.getModuleByName(name, func)
+	checkType(name, "string", "name")
+
+	local t = {}
+	if func ~= nil then
+		checkType(func, "function", "func")
+		for _, module in pairs(modules) do
+			local match1 = string.find(module:systemName():lower(), name:lower())
+			local match2 = string.find(module:entityName():lower(), name:lower())
+			if (match1 ~= nil or match2 ~= nil) and func(module) then
+				t[#t+1] = module
+			end
+		end
+	else
+		for _, module in pairs(modules) do
+			local match1 = string.find(module:systemName():lower(), name:lower())
+			local match2 = string.find(module:entityName():lower(), name:lower())
+			if match1 ~= nil or match2 ~= nil then
+				t[#t+1] = module
+			end
+		end
+	end
+
+	return nil
+end
+
+function mfwire.getAllModules(func)
+	local t = {}
+	if func ~= nil then
+		checkType(func, "function", "func")
+		for k, v in pairs(modules) do
+			if func(v) then
+				t[#t+1] = v
+			end
+		end
+	else
+		for k, v in pairs(modules) do
+			t[#t+1] = v
+		end
+	end
+
+	return t
 end
 
 libraries.addToEnvironment("Module", setmetatable({}, libMeta))

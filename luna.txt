@@ -30,7 +30,13 @@ bootstrapper.addLibrary("environment")
 	Change it only if you need it and you know what you are doing
 ]]--
 
+---Base
 bootstrapper.setPriority("base/setup", 2^1024)
+bootstrapper.setPriority("base/permissions", 2^1023)
+bootstrapper.setPriority("base/systems", 2^1022)
+
+---Custom Modules
+
 
 --Loading all libraries and modules
 bootstrapper.loadAllLibraries()

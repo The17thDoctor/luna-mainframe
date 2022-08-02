@@ -99,13 +99,29 @@ mfchat.color = {
 	yellow		= Color.fromHSV(0.15, 0.75, 1.00),
 	purple		= Color.fromHSV(0.75, 0.60, 1.00),
 	gray		= Color.fromHSV(1.00, 0.00, 0.50),
-	white		= Color.fromHSV(1.00, 0.00, 1.00),
+	white		= Color.fromHSV(1.00, 0.00, 0.88),
 	black		= Color.fromHSV(1.00, 0.00, 0.00),
 	darkgray	= Color.fromHSV(1.00, 0.00, 0.25),
 	darkred		= Color.fromHSV(1.00, 0.75, 0.60),
 	prefix		= Color.fromHSV(0.62, 0.66, 0.70),
 	warn		= Color.fromHSV(0.13, 0.75, 1.00),
 	error		= Color.fromHSV(0.02, 0.75, 1.00),
+
+	--Ranks
+	--TODO: Get SM Orang
+
+	superadmin 			= Color.fromHex("FFFF00"),
+	upperupperadmin 	= Color.fromHex("CC00CC"),
+	uppermidadmin 		= Color.fromHex("CC00CC"),
+	upperadmin 			= Color.fromHex("FF0000"),
+	modadmin 			= Color.fromHex("00A5FF"),
+	superdonatingmember = Color.fromHex("8CFF69"),
+	supermember			= Color.fromHex("99F159"),
+	donatingmember		= Color.fromHex("FF7800"),
+	member				= Color.fromHex("00FFFF"),
+	donator				= Color.fromHex("F1AA30"),
+	regular				= Color.fromHex("00BE00"),
+	guest				= Color.fromHex("BABABA"),
 }
 
 local function explodeNoLoss(str, separator)
@@ -652,7 +668,7 @@ local function makeErrorMessage(player, pattern, results, i, expectedType)
 
 	results[#results+1] = expectedType
 
-	mfchat.error(player, "Error in command : '"..pattern.."': expected a {s blue}.", unpack(results))
+	mfchat.error(player, "Error in command : '"..pattern.."': expected {s blue}.", unpack(results))
 end
 
 function mfchat.parseCommand(player, message)
@@ -691,6 +707,24 @@ function mfchat.parseCommand(player, message)
 							makeErrorMessage(player, pattern, result, i, "number")
 							return false, "error in command"
 						end
+					elseif v == "any" then
+						variables[k] = result[i]
+					elseif v:explode(":")[1] == "choice" then
+						local choices = v:explode(":")[2]:explode(",")
+
+						local found = false
+						for j = 1, #choices do
+							if result[i]:lower() == choices[j] then
+								variables[k] = choices[j]
+								found = true
+								break
+							end
+						end
+
+						if not found then
+							makeErrorMessage(player, pattern, result, i, table.concat(choices, ", "))
+							return false, "error in command"
+						end
 					end
 				else
 					variables[#variables+1] = result[i]
@@ -702,6 +736,14 @@ function mfchat.parseCommand(player, message)
 	end
 
 	return false, "no matching command"
+end
+
+--Adds a color to the colors table for every other modules to use.
+function mfchat.addColor(name, value)
+	checkType(name, "string", "name")
+	checkType(value, "Color", "color")
+
+	mfchat.color[name] = value
 end
 
 libraries.addToEnvironment("mfchat", mfchat)

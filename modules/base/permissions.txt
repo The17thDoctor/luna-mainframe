@@ -1,0 +1,203 @@
+--@name Luna Mainframe | Module | Whitelist & Permissions
+--@author
+
+if CLIENT then return end
+
+mainframe.registerPermission("permissions", false)
+mainframe.registerPermission("permissions.edit", false)
+mainframe.registerPermission("permissions.list", false)
+
+mainframe.registerPermission("permissions.whitelist", false)
+mainframe.registerPermission("permissions.whitelist.edit", false)
+mainframe.registerPermission("permissions.whitelist.list", false)
+
+mainframe.registerPermission("permissions.blacklist", false)
+mainframe.registerPermission("permissions.blacklist.edit", false)
+mainframe.registerPermission("permissions.blacklist.list", false)
+
+mainframe.registerPermission("permissions.permalist", false)
+mainframe.registerPermission("permissions.permalist.edit", false)
+mainframe.registerPermission("permissions.permalist.list", false)
+
+
+---Whitelist
+
+mfchat.addCommand("whitelist (%w+) (.*)", function(player, data)
+	local action = data.action
+	local target = data.player
+
+	if target == ents.owner() then
+		mfchat.error(player, "You cannot modify {P}'s whitelist state.", target)
+		return
+	end
+
+	if action == "add" then
+		if not player:isPermitted("permissions.whitelist.edit") then
+			mfchat.error(player, "You are not permitted to edit the whitelist.")
+			return
+		end
+
+		if not target:isWhitelisted() then
+			target:addToWhitelist()
+			mfchat.say(player, "{P} has been added to the whitelist.", target)
+			mfchat.say(target, "{s color} have been added to {P}'s whitelist.", "You", target:getTeamColor(), ents.owner())
+		else
+			mfchat.error(player, "{P} is already in the whitelist.", target)
+		end
+	elseif action == "remove" then
+		if not player:isPermitted("permissions.whitelist.edit") then
+			mfchat.error(player, "You are not permitted to edit the whitelist.")
+			return
+		end
+
+		if target:isWhitelisted() then
+			target:removeFromWhitelist()
+			mfchat.say(player, "{P} has been removed from the whitelist.", target)
+			mfchat.say(target, "{s color} have been removed from {P}'s whitelist.", "You", target:getTeamColor(), ents.owner())
+		else
+			mfchat.error(player, "{P} is not in the whitelist.", target)
+		end
+	end
+end, {{"action", "choice:add,remove"}, {"player", "player"}})
+
+mfchat.addCommand("whitelist list", function(player)
+	if not player:isPermitted("permissions.whitelist.list") then
+		mfchat.error(player, "You are not permitted to list whitelist members.")
+		return
+	end
+
+	local list = mainframe.getWhitelist()
+	local str = {}
+	local args = {}
+
+	for k, v in pairs(list) do
+		str[#str+1] = "{s "..v.rank.."}"
+		args[#args+1] = v.username
+		args[#args+1] = mfchat.color[v.rank]
+	end
+
+	str = table.concat(str, ", ")
+	mfchat.say(player, "Currently whitelisted players are : "..str..".", unpack(args))
+end)
+
+
+---Blacklist
+
+mfchat.addCommand("blacklist (%w+) (.*)", function(player, data)
+	local action = data.action
+	local target = data.player
+
+	if target == ents.owner() then
+		mfchat.error(player, "You cannot modify {P}'s blacklist state.", target)
+		return
+	end
+
+	if action == "add" then
+		if not player:isPermitted("permissions.blacklist.edit") then
+			mfchat.error(player, "You are not permitted to edit the blacklist.")
+			return
+		end
+
+		if not target:isBlacklisted() then
+			target:addToBlacklist()
+			mfchat.say(player, "{P} has been added to the blacklist.", target)
+			mfchat.say(target, "{s color} have been added to {P}'s blacklist.", "You", target:getTeamColor(), ents.owner())
+		else
+			mfchat.error(player, "{P} is already in the blacklist.", target)
+		end
+	elseif action == "remove" then
+		if not player:isPermitted("permissions.blacklist.edit") then
+			mfchat.error(player, "You are not permitted to edit the blacklist.")
+			return
+		end
+
+		if target:isBlacklisted() then
+			target:removeFromBlacklist()
+			mfchat.say(player, "{P} has been removed from the blacklist.", target)
+			mfchat.say(target, "{s color} have been removed from {P}'s blacklist.", "You", target:getTeamColor(), ents.owner())
+		else
+			mfchat.error(player, "{P} is not in the blacklist.", target)
+		end
+	end
+end, {{"action", "choice:add,remove"}, {"player", "player"}})
+
+mfchat.addCommand("blacklist list", function(player)
+	if not player:isPermitted("permissions.blacklist.list") then
+		mfchat.error(player, "You are not permitted to list blacklist members.")
+		return
+	end
+
+	local list = mainframe.getBlacklist()
+	local str = {}
+	local args = {}
+
+	for k, v in pairs(list) do
+		str[#str+1] = "{s "..v.rank.."}"
+		args[#args+1] = v.username
+		args[#args+1] = mfchat.color[v.rank]
+	end
+
+	str = table.concat(str, ", ")
+	mfchat.say(player, "Currently whitelisted players are : "..str..".", unpack(args))
+end)
+
+
+---Permalist
+
+mfchat.addCommand("permalist (%w+) (.*)", function(player, data)
+	local action = data.action
+	local target = data.player
+
+	if target == ents.owner() then
+		mfchat.error(player, "You cannot modify {P}'s permalist state.", target)
+		return
+	end
+
+	if action == "add" then
+		if not player:isPermitted("permissions.permalist.edit") then
+			mfchat.error(player, "You are not permitted to edit the permalist.")
+			return
+		end
+
+		if not target:isPermalisted() then
+			target:addToPermalist()
+			mfchat.say(player, "{P} has been added to the permalist.", target)
+			mfchat.say(target, "{s color} have been added to {P}'s permalist.", "You", target:getTeamColor(), ents.owner())
+		else
+			mfchat.error(player, "{P} is already in the permalist.", target)
+		end
+	elseif action == "remove" then
+		if not player:isPermitted("permissions.permalist.edit") then
+			mfchat.error(player, "You are not permitted to edit the permalist.")
+			return
+		end
+
+		if target:isPermalisted() then
+			target:removeFromPermalist()
+			mfchat.say(player, "{P} has been removed from the permalist.", target)
+			mfchat.say(target, "{s color} have been removed from {P}'s permalist.", "You", target:getTeamColor(), ents.owner())
+		else
+			mfchat.error(player, "{P} is not in the permalist.", target)
+		end
+	end
+end, {{"action", "choice:add,remove"}, {"player", "player"}})
+
+mfchat.addCommand("permalist list", function(player)
+	if not player:isPermitted("permissions.permalist.list") then
+		mfchat.error(player, "You are not permitted to list permalist members.")
+		return
+	end
+
+	local list = mainframe.getPermalist()
+	local str = {}
+	local args = {}
+
+	for k, v in pairs(list) do
+		str[#str+1] = "{s "..v.rank.."}"
+		args[#args+1] = v.username
+		args[#args+1] = mfchat.color[v.rank]
+	end
+
+	str = table.concat(str, ", ")
+	mfchat.say(player, "Currently whitelisted players are : "..str..".", unpack(args))
+end)

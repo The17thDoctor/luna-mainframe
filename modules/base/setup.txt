@@ -63,6 +63,19 @@ if SERVER then
 	end
 
 	mainframe.addToGlobalEnvironment(removeChatListener, "removeChatListener")
+
+
+	---Base Commands
+
+	mfchat.addCommand("help", function(player)
+		local url = "https://github.com/The17thDoctor/luna-mainframe/wiki"
+		mfchat.say(player, "Luna's official documentation can be found here : {s blue}", url)
+	end)
+
+	mfchat.say(ents.owner(), "Salutations {P}", ents.owner())
+	mfchat.say(ents.owner(), "If you require any help, please use {blue}/{s} help{white}.", mainframe.getSetting("Command Prefix", "value"))
+
+	mainframe.loadFile()
 else
 
 end

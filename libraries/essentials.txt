@@ -130,7 +130,10 @@ if SERVER then
 
 		mainframe.blacklist[player:steamID()] = nil
 		mainframe.whitelist[player:steamID()] = {
-			added = os.time()
+			permissions = {},
+			added = os.time(),
+			username = player:name(),
+			rank = player:getUserGroup(),
 		}
 
 		return true
@@ -154,7 +157,11 @@ if SERVER then
 
 		mainframe.whitelist[player:steamID()] = nil
 		mainframe.permalist[player:steamID()] = nil
-		mainframe.blacklist[player:steamID()] = os.time()
+		mainframe.blacklist[player:steamID()] = {
+			added = os.time(),
+			username = player:name(),
+			rank = player:getUserGroup()
+		}
 		mainframe.saveFile()
 		return true
 	end
@@ -178,10 +185,40 @@ if SERVER then
 		mainframe.whitelist[player:steamID()] = nil
 		mainframe.blacklist[player:steamID()] = nil
 		mainframe.permalist[player:steamID()] = {
-			added = os.time()
+			permissions = {},
+			added = os.time(),
+			username = player:name(),
+			rank = player:getUserGroup(),
 		}
 		mainframe.saveFile()
 		return true
+	end
+
+	function mainframe.getWhitelist()
+		local t = {}
+		for k, v in pairs(mainframe.whitelist) do
+			t[k] = v
+		end
+
+		return t
+	end
+
+	function mainframe.getBlacklist()
+		local t = {}
+		for k, v in pairs(mainframe.blacklist) do
+			t[k] = v
+		end
+
+		return t
+	end
+
+	function mainframe.getPermalist()
+		local t = {}
+		for k, v in pairs(mainframe.permalist) do
+			t[k] = v
+		end
+
+		return t
 	end
 
 	--Removes a player from the permalist..
