@@ -3,13 +3,23 @@
 
 if CLIENT then return end
 
-local function standardToggler(module, enable)
+--The standard module toggler, adapts to most TSCM entities that can be turned on/off
+local function standardToggler(module, enable, player)
+	local say, error = function() end, function() end
+	if IsValid(player) and player:isPlayer() then
+		say = mfchat.say
+		error = mfchat.error
+	end
+
 	if not IsValid(module) then
-		return false, "module not found"
-	elseif not IsValid(ents.self():getCore()) then
-		return false, "core not found"
-	elseif not IsValid(ents.self():getNode()) then
-		return false, "node not found"
+		error(player, "{s blue} not found.", module:entityName())
+		return
+	elseif not IsValid(mfwire.getModuleByClass("ship_core")) then
+		error(player, "{s blue} not found.", mfwire.getModuleByClass("ship_core"):entityName())
+		return
+	elseif not IsValid(mfwire.getModuleByClass("stargazer_node")) then
+		error(player, "{s blue} not found.", mfwire.getModuleByClass("stargazer_node"):entityName())
+		return
 	end
 
 	local extraData = module:extraData()
@@ -20,25 +30,255 @@ local function standardToggler(module, enable)
 		local wirelink = module:getWirelink()
 
 		if enable then
-			if wirelink[active] then
-				return false, "already active"
+			if wirelink[active] == 1 then
+				error(player, "The {s blue} is already active.", module:systemName())
+				return
 			elseif wirelink["State"] == "Awaiting Activation" then
-				return false, "awaiting activation"
+				error(player, "The {s blue} is awaiting activation.", module:systemName())
+				return
 			end
 
 			wirelink[activator] = 1
-			return true
+			say(player, "Enabling the {s blue}.", module:systemName())
+
+			if wirelink["Subsystem Health"] < 25 then
+				error(player, "Subsystem health below 25%, the {s blue} won't engage!", module:systemName())
+			end
+			return
 		else
-			if not wirelink[active] then
-				return false, "already inactive"
+			if wirelink[active] == 0 and wirelink["State"] ~= "Awaiting Activation" then
+				error(player, "The {s blue} is already inactive.", module:systemName())
+				return
 			end
 
 			wirelink[activator] = 0
-			return true
+			say(player, "Disabling the {s blue}.", module:systemName())
+			return
 		end
 	else
+		local wirelinks = module:getWirelink()
 
+		if enable then
+			local successful = 0
+			for i = 1, #wirelinks do
+				local wirelink = wirelinks[i]
+				if wirelink[active] ~= 1 and wirelink["State"] ~= "Awaiting Activation" then
+					wirelink[activator] = 1
+					successful = successful + 1
+				end
+			end
+
+			if successful == 0 then
+				error(player, "All {s blue} are already active.", module:entityName())
+			elseif successful < #wirelinks then
+				say(player, "{s blue} out of {s blue} have been enabled.", tostring(successful), tostring(#wirelinks), module:systemName())
+			else
+				say(player, "All {s blue} have been enabled.", module:systemName())
+			end
+		else
+			local successful = 0
+			for i = 1, #wirelinks do
+				local wirelink = wirelinks[i]
+				if wirelink[active] == 1 or wirelink["State"] == "Awaiting Activation" then
+					wirelink[activator] = 0
+					successful = successful + 1
+				end
+			end
+
+			if successful == 0 then
+				error(player, "All {s blue} are already inactive.", module:entityName())
+			elseif successful < #wirelinks then
+				say(player, "{s blue} out of {s blue} have been disabled.", tostring(successful), tostring(#wirelinks), module:systemName())
+			else
+				say(player, "All {s blue} have been disabled.", module:systemName())
+			end
+		end
 	end
 end
 
-Module("ship_core", {entity = "Ship Core", system = "Plating"}, true, true, standardToggler, {activator = "Enable Plating", active = "Plating Enabled"})
+local function shieldToggler(module, enable, player, action)
+	local say, warn, error = function() end, function() end, function() end
+	if IsValid(player) and player:isPlayer() then
+		say = mfchat.say
+		warn = mfchat.warn
+		error = mfchat.error
+	end
+
+	if not IsValid(module) then
+		error(player, "{s blue} not found.", module:entityName())
+		return
+	elseif not IsValid(mfwire.getModuleByClass("ship_core")) then
+		error(player, "{s blue} not found.", mfwire.getModuleByClass("ship_core"):entityName())
+		return
+	elseif not IsValid(mfwire.getModuleByClass("stargazer_node")) then
+		error(player, "{s blue} not found.", mfwire.getModuleByClass("stargazer_node"):entityName())
+		return
+	end
+
+	local wirelink = module:getWirelink()
+
+	if enable then
+		if wirelink["Active"] == 1 then
+			if action == "raise" then
+				error(player, "The shields are already raised.")
+			elseif action == "up" then
+				error(player, "Shields already up.")
+			else
+				error(player, "The {s blue} is already active.", module:entityName())
+			end
+
+			return
+		elseif wirelink["State"] == "Awaiting Activation" then
+			error(player, "The {s blue} is awaiting activation.", module:entityName())
+			return
+		end
+	else
+		if wirelink["Active"] == 0 and wirelink["State"] ~= "Awaiting Activation" then
+			if action == "lower" then
+				error(player, "The shields are already lowered.")
+			elseif action == "down" then
+				error(player, "Shields already down.")
+			else
+				error(player, "The {s blue} is already inactive.", module:entityName())
+			end
+
+			return
+		end
+	end
+
+
+	if enable then
+		wirelink["Activate"] = 1
+
+		if module:class() == "st_shield_emitter" then
+			if action == "raise" then
+				say(player, "Raising shields.")
+			elseif action == "up" then
+				say(player, "Shields up.")
+			else
+				say(player, "Enabling the {s blue}.", module:systemName())
+			end
+		else
+			local cur, max = wirelink["Current Energy"], wirelink["Max Energy"]
+
+			if cur < max then
+				local delay = 0.5
+
+				say(player, "Shields activated, current energy : {s green}/{s green} ({blue}{d 02 p}{white}).", tostring(cur), tostring(max), cur/max)
+				timer.simple(delay, function()
+					local newCur = wirelink["Current Energy"]
+					local delta = (newCur - cur) / delay
+					local ETA = math.round((max - newCur) / delta, 2)
+					say(player, "ETA: {green}{d t}", ETA)
+				end)
+			else
+				if action == "raise" then
+					say(player, "Raising shields.")
+				elseif action == "up" then
+					say(player, "Shields up.")
+				else
+					say(player, "Enabling the {s blue}.", module:systemName())
+				end
+			end
+		end
+
+		if wirelink["Subsystem Health"] < 50 then
+			warn(player, "Shield subsystem health below 50%, impacts will deal 25% more damage.")
+		elseif wirelink["Subsystem Health"] < 25 then
+			error(player, "Shield subsystem health below 25%, shields won't engage!")
+		end
+	else
+		wirelink["Activate"] = 0
+		if action == "lower" then
+			say(player, "Lowering shields.")
+		elseif action == "down" then
+			say(player, "Shields down.")
+		else
+			say(player, "Disabling the {s blue}.", module:systemName())
+		end
+	end
+end
+
+---Base Modules
+Module("ship_core", {entity = "Ship Core", system = "Plating Emitters"}, true, true, standardToggler, {activator = "Enable Plating", active = "Plating Enabled"})
+Module("st_shield_emitter", {entity = "Starship Shield", system = "Shield Array"}, true, true, shieldToggler)
+Module("atlantis_shield_emitter", {entity = "Atlantis Shield", system = "Shield Array"}, true, true, shieldToggler)
+Module("st_cloaking_device", {entity = "Cloaking Device", system = "Cloaking Emitters"}, true, true, standardToggler)
+
+---Stargazer Modules
+Module("stargazer_node", {entity = "Resource Node", system = "Resource Node"}, true, false)
+Module("stargazer_energy_core", {entity = "Energy Core", system = "Energy Core"}, true, true, standardToggler)
+Module("stargazer_water_core", {entity = "Water Core", system = "Water Core"}, true, true, standardToggler)
+Module("stargazer_refinement_core", {entity = "Refinement Core", system = "Refinery"}, true, true, standardToggler)
+Module("stargazer_ls_core", {entity = "Life Support Core", system = "Life Support"}, true, true, standardToggler)
+
+--Finds which modules match the given string and turns them on if only 1 match remains.
+local function toggleModule(player, data)
+	local enable = data.action == "enable" or data.action == "e"
+	local moduleName = data.module
+
+	local modules = mfwire.getModuleByName(moduleName)
+
+	local lastModule
+	for i = 1, #modules do
+		local module = modules[i]
+		if IsValid(module) then
+			if lastModule ~= nil then
+				mfchat.error(player, "Multiple matches found, please be more specific.")
+				return
+			end
+
+			lastModule = module
+		end
+	end
+
+	if lastModule ~= nil then
+		if not lastModule:toggleable() then
+			mfchat.error(player, "The {s blue} cannot be toggled.", lastModule:entityName())
+			return
+		end
+
+		if enable then
+			lastModule:enableModule(player)
+		else
+			lastModule:disableModule(player)
+		end
+	elseif #modules == 0 then
+		mfchat.error(player, "No module found.")
+	else
+		mfchat.error(player, "Module not found on ship.")
+	end
+end
+
+local function toggleShields(player, data)
+	local shields
+	local stShield = mfwire.getModuleByClass("st_shield_emitter")
+	local atlShield = mfwire.getModuleByClass("atlantis_shield_emitter")
+
+	if IsValid(stShield) then
+		shields = stShield
+	elseif IsValid(atlShield) then
+		shields = atlShield
+	else
+		mfchat.error(player, "{s blue} not found.", "Shield Emitter")
+		return
+	end
+
+	local enable = data.action == "up" or data.action == "raise"
+
+	if enable then
+		shields:enableModule(player, data.action)
+	else
+		shields:disableModule(player, data.action)
+	end
+end
+
+mfchat.addCommand("(enable)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
+mfchat.addCommand("(disable)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
+
+mfchat.addCommand("(e)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
+mfchat.addCommand("(d)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
+
+mfchat.addCommand("shields? (%w+)", toggleShields, {{"action", "choice:up,down"}})
+mfchat.addCommand("(raise) shields?", toggleShields, {{"action", "any"}})
+mfchat.addCommand("(lower) shields?", toggleShields, {{"action", "any"}})

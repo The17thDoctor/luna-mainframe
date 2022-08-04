@@ -32,7 +32,7 @@ local mfchat = {} --This is the main chat library table.
 	If x or y is not given, lua rules apply for each.
 	EXAMPLES :
 		{d}			: 3.52682 -> 3.52682
-		{d 3}		: 3.52682 -> 3.53
+		{d 3}		: 3.52682 -> 3.527
 		{d 06}		: 3.52682 -> 3.526820 (Adds trailing zeros)
 		{d s}		: 1000000 -> 1 000 000
 		{d s}		: 1525.15 -> 1 525.15
@@ -46,9 +46,9 @@ local mfchat = {} --This is the main chat library table.
 	s <color> : Any string, equivalent to lua concatenation.
 	If a color name or a custom color is supplied, all of that text will be put in that color.
 	EXAMPLES :
-		{s						: My Awesome Text -> ..My Awesome Text..
-		{s red					: My Awesome Text -> ..{red}My Awesome Text{previous color}..
-		{s color <r> <g> <b>	: My Awesome Text -> ..{color <r> <g> <b>}My Awesome Text{previous color}..
+		{s}						: My Awesome Text -> ..My Awesome Text..
+		{s red}					: My Awesome Text -> ..{red}My Awesome Text{previous color}..
+		{s color <r> <g> <b>}	: My Awesome Text -> ..{color <r> <g> <b>}My Awesome Text{previous color}..
 		{s color}				: My Awesome Text -> ..{color given in arguments}My Awesome{previous color}..
 
 
@@ -93,7 +93,7 @@ local mfchat = {} --This is the main chat library table.
 
 mfchat.color = {
 	red			= Color.fromHSV(1.00, 0.75, 1.00),
-	blue		= Color.fromHSV(0.65, 0.60, 1.00),
+	blue		= Color.fromHSV(0.60, 0.60, 0.95),
 	green		= Color.fromHSV(0.30, 0.60, 1.00),
 	orange		= Color.fromHSV(0.05, 0.75, 1.00),
 	yellow		= Color.fromHSV(0.15, 0.75, 1.00),
@@ -123,6 +123,15 @@ mfchat.color = {
 	regular				= Color.fromHex("00BE00"),
 	guest				= Color.fromHex("BABABA"),
 }
+
+--Adds a color to the colors table for every other modules to use.
+function mfchat.addColor(name, value)
+	checkType(name, "string", "name")
+	checkType(value, "Color", "color")
+
+	mfchat.color[name] = value
+end
+
 
 local function explodeNoLoss(str, separator)
 	local words = string.explode(str, separator, true)
@@ -196,6 +205,8 @@ local function numberFormatter(options, values)
 		else
 			error("Invalid formatting code '"..formatter.."'")
 		end
+	else
+		format = x
 	end
 
 	if format == nil then error("Invalid formatting code '"..formatter.."'") end
@@ -270,9 +281,11 @@ local function numberFormatter(options, values)
 
 			str = str.."."..newsplt[2]
 		end
+
+		formatTable[#formatTable+1] = str
 	end
 
-	local str = tostring(number)
+	--[[local str = tostring(number)
 	if rounding ~= nil and utf8.getChar(options[1], 1) == "0" then
 		local newsplt = str:explode(".")
 		str = newsplt[1]
@@ -283,9 +296,9 @@ local function numberFormatter(options, values)
 		end
 
 		str = str.."."..newsplt[2]
-	end
+	end]]
 
-	return {str}, 1
+	return formatTable, 1
 end
 
 local function stringFormatter(options, values, currentTable)
@@ -422,7 +435,6 @@ end
 
 local function playerFormatter(options, values, currentTable)
 	checkType(values[1], "Player")
-	if not IsValid(values[1]) then error("Invalid player entity", 1) end
 	return {values[1]:name()}, 1
 end
 
@@ -430,7 +442,6 @@ local function playerAltFormatter(options, values, currentTable)
 	checkType(values[1], "Player")
 	local player = values[1]
 
-	if not IsValid(player) then error("Invalid player entity", 1) end
 	local previousColor = mfchat.color.white
 	for i = #currentTable, 1, -1 do
 		if getmetatable(currentTable[i]) == "Color" then
@@ -446,6 +457,54 @@ local function playerAltFormatter(options, values, currentTable)
 	}, 1
 end
 
+local function playerSmartFormatter(options, values, currentTable)
+	checkType(values[1], "Player")
+	checkType(values[2], "Player")
+	local player = values[1]
+	local player2 = values[2]
+
+	local name = player:name()
+	if player == player2 then
+		name = "You"
+	end
+
+	if options[1] == "l" and name == "You" then
+		name = name:lower()
+	end
+
+	return {name}, 2
+end
+
+local function playerSmartAltFormatter(options, values, currentTable)
+	checkType(values[1], "Player")
+	checkType(values[2], "Player")
+	local player = values[1]
+	local player2 = values[2]
+
+	local previousColor = mfchat.color.white
+	for i = #currentTable, 1, -1 do
+		if getmetatable(currentTable[i]) == "Color" then
+			previousColor = currentTable[i]
+			break
+		end
+	end
+
+	local name = player:name()
+	if player == player2 then
+		name = "You"
+	end
+
+	if options[1] == "l" and name == "You" then
+		name = name:lower()
+	end
+
+	return {
+		player:getTeamColor(),
+		name,
+		previousColor
+	}, 2
+end
+
 mfchat.addStringFormatter("d", numberFormatter)
 mfchat.addStringFormatter("s", stringFormatter)
 mfchat.addStringFormatter("a", angleFormatter)
@@ -455,6 +514,8 @@ mfchat.addStringFormatter("E", entityAltFormatter)
 mfchat.addStringFormatter("en", entityNiceFormatter)
 mfchat.addStringFormatter("p", playerFormatter)
 mfchat.addStringFormatter("P", playerAltFormatter)
+mfchat.addStringFormatter("sp", playerSmartFormatter)
+mfchat.addStringFormatter("sP", playerSmartAltFormatter)
 
 function mfchat.parseMessage(message, ...)
 	local words, formatters = explodeNoLoss(message, "\\?%b{}")
@@ -673,7 +734,7 @@ end
 
 function mfchat.parseCommand(player, message)
 	table.sort(commands, function(a, b)
-		return #a.pattern:explode(" ") > #b.pattern:explode(" ")
+		return a.pattern > b.pattern
 	end)
 
 	for i = 1, #commands do
@@ -736,14 +797,6 @@ function mfchat.parseCommand(player, message)
 	end
 
 	return false, "no matching command"
-end
-
---Adds a color to the colors table for every other modules to use.
-function mfchat.addColor(name, value)
-	checkType(name, "string", "name")
-	checkType(value, "Color", "color")
-
-	mfchat.color[name] = value
 end
 
 libraries.addToEnvironment("mfchat", mfchat)

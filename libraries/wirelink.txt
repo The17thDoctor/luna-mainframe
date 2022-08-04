@@ -23,7 +23,12 @@ function libMeta.__call(_, mClass, names, unique, toggleable, togglerFunc, extra
 	checkType(names, "table", "names")
 	checkType(unique, "boolean", "unique")
 	checkType(toggleable, "boolean", "toggleable")
-	checkType(togglerFunc, "function", "togglerFunc")
+
+	if toggleable then
+		checkType(togglerFunc, "function", "togglerFunc")
+	else
+		togglerFunc = nil
+	end
 
 	if extraData ~= nil then
 		checkType(extraData, "table", "extraData")
@@ -59,7 +64,7 @@ function moduleMeta.__index(self, key)
 end
 
 --Locks the table
-function moduleMeta.__newindex() end
+--function moduleMeta.__newindex() end
 
 --Returns the module's class
 function moduleMeta:class()
@@ -91,15 +96,15 @@ function moduleMeta:extraData()
 end
 
 --Enables all entities found under the module's class
-function moduleMeta:enableModule()
-	if not self:canBeToggled() then return false, "can't be enabled" end
-	return self.moduleTogglerFunc(self, true)
+function moduleMeta:enableModule(...)
+	if not self:toggleable() then return false, "can't be enabled" end
+	return self.moduleTogglerFunc(self, true, ...)
 end
 
 --Disables all entities found under the module's class
-function moduleMeta:disableModule()
-	if not self:canBeToggled() then return false, "can't be disabled" end
-	return self.moduleTogglerFunc(self, false)
+function moduleMeta:disableModule(...)
+	if not self:toggleable() then return false, "can't be disabled" end
+	return self.moduleTogglerFunc(self, false, ...)
 end
 
 local function findFilter(entity)
@@ -191,7 +196,7 @@ function mfwire.getModuleByName(name, func)
 		end
 	end
 
-	return nil
+	return t
 end
 
 function mfwire.getAllModules(func)

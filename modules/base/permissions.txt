@@ -37,10 +37,10 @@ mfchat.addCommand("whitelist (%w+) (.*)", function(player, data)
 			return
 		end
 
-		if not target:isWhitelisted() then
+		if not target:isWhitelisted() and not target:isPermalisted() then
 			target:addToWhitelist()
 			mfchat.say(player, "{P} has been added to the whitelist.", target)
-			mfchat.say(target, "{s color} have been added to {P}'s whitelist.", "You", target:getTeamColor(), ents.owner())
+			mfchat.say(target, "{sP} have been added to {P}'s whitelist.", target, target, ents.owner())
 		else
 			mfchat.error(player, "{P} is already in the whitelist.", target)
 		end
@@ -53,7 +53,7 @@ mfchat.addCommand("whitelist (%w+) (.*)", function(player, data)
 		if target:isWhitelisted() then
 			target:removeFromWhitelist()
 			mfchat.say(player, "{P} has been removed from the whitelist.", target)
-			mfchat.say(target, "{s color} have been removed from {P}'s whitelist.", "You", target:getTeamColor(), ents.owner())
+			mfchat.say(target, "{sP} have been removed from {P}'s whitelist.", target, target, ents.owner())
 		else
 			mfchat.error(player, "{P} is not in the whitelist.", target)
 		end
@@ -101,7 +101,7 @@ mfchat.addCommand("blacklist (%w+) (.*)", function(player, data)
 		if not target:isBlacklisted() then
 			target:addToBlacklist()
 			mfchat.say(player, "{P} has been added to the blacklist.", target)
-			mfchat.say(target, "{s color} have been added to {P}'s blacklist.", "You", target:getTeamColor(), ents.owner())
+			mfchat.say(target, "{sP} have been added to {P}'s blacklist.", target, target, ents.owner())
 		else
 			mfchat.error(player, "{P} is already in the blacklist.", target)
 		end
@@ -114,7 +114,7 @@ mfchat.addCommand("blacklist (%w+) (.*)", function(player, data)
 		if target:isBlacklisted() then
 			target:removeFromBlacklist()
 			mfchat.say(player, "{P} has been removed from the blacklist.", target)
-			mfchat.say(target, "{s color} have been removed from {P}'s blacklist.", "You", target:getTeamColor(), ents.owner())
+			mfchat.say(target, "{sP} have been removed from {P}'s blacklist.", target, target, ents.owner())
 		else
 			mfchat.error(player, "{P} is not in the blacklist.", target)
 		end
@@ -162,7 +162,7 @@ mfchat.addCommand("permalist (%w+) (.*)", function(player, data)
 		if not target:isPermalisted() then
 			target:addToPermalist()
 			mfchat.say(player, "{P} has been added to the permalist.", target)
-			mfchat.say(target, "{s color} have been added to {P}'s permalist.", "You", target:getTeamColor(), ents.owner())
+			mfchat.say(target, "{sP} have been added to {P}'s permalist.", target, target, ents.owner())
 		else
 			mfchat.error(player, "{P} is already in the permalist.", target)
 		end
@@ -175,7 +175,7 @@ mfchat.addCommand("permalist (%w+) (.*)", function(player, data)
 		if target:isPermalisted() then
 			target:removeFromPermalist()
 			mfchat.say(player, "{P} has been removed from the permalist.", target)
-			mfchat.say(target, "{s color} have been removed from {P}'s permalist.", "You", target:getTeamColor(), ents.owner())
+			mfchat.say(target, "{sP} have been removed from {P}'s permalist.", target, target, ents.owner())
 		else
 			mfchat.error(player, "{P} is not in the permalist.", target)
 		end

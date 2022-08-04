@@ -72,8 +72,25 @@ if SERVER then
 		mfchat.say(player, "Luna's official documentation can be found here : {s blue}", url)
 	end)
 
-	mfchat.say(ents.owner(), "Salutations {P}", ents.owner())
-	mfchat.say(ents.owner(), "If you require any help, please use {blue}/{s} help{white}.", mainframe.getSetting("Command Prefix", "value"))
+	mfchat.addCommand("say hello to (%w+)", function(player, data)
+
+		local str = "Hello "
+		local len = utf8.len(data.target:name())
+		local i = 1
+		for w in string.gmatch(data.target:name(), ".") do
+			local c = Color.fromHSV(i/len, 0.7, 1)
+			str = str.."{color "..c.r.." "..c.g.." "..c.b.."}"..w
+			i = i + 1
+		end
+
+		str = str.."{white}!"
+
+		mfchat.say(data.target, str)
+		mfchat.say(player, "{P} has been greeted.", data.target)
+	end, {{"target", "player"}})
+
+	--mfchat.say(ents.owner(), "Salutations {P}", ents.owner())
+	--mfchat.say(ents.owner(), "If you require any help, please use {blue}/{s} help{white}.", mainframe.getSetting("Command Prefix", "value"))
 
 	mainframe.loadFile()
 else
