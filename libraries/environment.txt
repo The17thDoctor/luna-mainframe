@@ -208,18 +208,23 @@ function getModuleEnvironment(modulePath)
 
 	---TIMERS
 	environment.timer = {}
-	environment.timer.adjust 	= timer.adjust
 	environment.timer.canCreate	= timer.canCreate
-	environment.timer.exists	= timer.exists
 	environment.timer.getCount	= timer.getCount
 	environment.timer.getMax	= timer.getMax
 	environment.timer.pause		= timer.pause
-	environment.timer.remove	= timer.remove
 	environment.timer.repsLeft	= timer.repsLeft
 	environment.timer.start		= timer.start
 	environment.timer.stop		= timer.stop
 	environment.timer.timeLeft	= timer.timeLeft
 	environment.timer.unpause	= timer.unpause
+
+	function environment.timer.exists(name)
+		return timer.exists(createID(name))
+	end
+
+	function environment.timer.adjust(name, delay, reps, func)
+		return timer.adjust(createID(name), delay, reps, func)
+	end
 
 	function environment.timer.create(identifier, delay, reps, callback)
 		timer.create(createID(identifier), delay, reps, function()
@@ -229,6 +234,10 @@ function getModuleEnvironment(modulePath)
 				timer.remove(createID(identifier))
 			end
 		end)
+	end
+
+	function environment.timer.remove(identifier)
+		timer.remove(createID(identifier))
 	end
 
 	function environment.timer.simple(delay, callback)

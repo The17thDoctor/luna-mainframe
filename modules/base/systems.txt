@@ -3,22 +3,24 @@
 
 if CLIENT then return end
 
+mainframe.registerPermission("module", true)
+mainframe.registerPermission("module.toggle", true)
+mainframe.registerPermission("selfdestruct", false)
+mainframe.registerPermission("selfdestruct.engage", false)
+mainframe.registerPermission("selfDestruct.abort", false)
+
+---Module Toggling
+
 --The standard module toggler, adapts to most TSCM entities that can be turned on/off
 local function standardToggler(module, enable, player)
-	local say, error = function() end, function() end
-	if IsValid(player) and player:isPlayer() then
-		say = mfchat.say
-		error = mfchat.error
-	end
-
 	if not IsValid(module) then
-		error(player, "{s blue} not found.", module:entityName())
+		mfchat.error(player, "{s blue} not found.", module:entityName())
 		return
 	elseif not IsValid(mfwire.getModuleByClass("ship_core")) then
-		error(player, "{s blue} not found.", mfwire.getModuleByClass("ship_core"):entityName())
+		mfchat.error(player, "{s blue} not found.", mfwire.getModuleByClass("ship_core"):entityName())
 		return
 	elseif not IsValid(mfwire.getModuleByClass("stargazer_node")) then
-		error(player, "{s blue} not found.", mfwire.getModuleByClass("stargazer_node"):entityName())
+		mfchat.error(player, "{s blue} not found.", mfwire.getModuleByClass("stargazer_node"):entityName())
 		return
 	end
 
@@ -31,28 +33,28 @@ local function standardToggler(module, enable, player)
 
 		if enable then
 			if wirelink[active] == 1 then
-				error(player, "The {s blue} is already active.", module:systemName())
+				mfchat.error(player, "The {s blue} is already active.", module:systemName())
 				return
 			elseif wirelink["State"] == "Awaiting Activation" then
-				error(player, "The {s blue} is awaiting activation.", module:systemName())
+				mfchat.error(player, "The {s blue} is awaiting activation.", module:systemName())
 				return
 			end
 
 			wirelink[activator] = 1
-			say(player, "Enabling the {s blue}.", module:systemName())
+			mfchat.say(player, "Enabling the {s blue}.", module:systemName())
 
 			if wirelink["Subsystem Health"] < 25 then
-				error(player, "Subsystem health below 25%, the {s blue} won't engage!", module:systemName())
+				mfchat.error(player, "Subsystem health below 25%, the {s blue} won't engage!", module:systemName())
 			end
 			return
 		else
 			if wirelink[active] == 0 and wirelink["State"] ~= "Awaiting Activation" then
-				error(player, "The {s blue} is already inactive.", module:systemName())
+				mfchat.error(player, "The {s blue} is already inactive.", module:systemName())
 				return
 			end
 
 			wirelink[activator] = 0
-			say(player, "Disabling the {s blue}.", module:systemName())
+			mfchat.say(player, "Disabling the {s blue}.", module:systemName())
 			return
 		end
 	else
@@ -69,11 +71,11 @@ local function standardToggler(module, enable, player)
 			end
 
 			if successful == 0 then
-				error(player, "All {s blue} are already active.", module:entityName())
+				mfchat.error(player, "All {s blue} are already active.", module:entityName())
 			elseif successful < #wirelinks then
-				say(player, "{s blue} out of {s blue} have been enabled.", tostring(successful), tostring(#wirelinks), module:systemName())
+				mfchat.say(player, "{s blue} out of {s blue} have been enabled.", tostring(successful), tostring(#wirelinks), module:systemName())
 			else
-				say(player, "All {s blue} have been enabled.", module:systemName())
+				mfchat.say(player, "All {s blue} have been enabled.", module:systemName())
 			end
 		else
 			local successful = 0
@@ -86,32 +88,25 @@ local function standardToggler(module, enable, player)
 			end
 
 			if successful == 0 then
-				error(player, "All {s blue} are already inactive.", module:entityName())
+				mfchat.error(player, "All {s blue} are already inactive.", module:entityName())
 			elseif successful < #wirelinks then
-				say(player, "{s blue} out of {s blue} have been disabled.", tostring(successful), tostring(#wirelinks), module:systemName())
+				mfchat.say(player, "{s blue} out of {s blue} have been disabled.", tostring(successful), tostring(#wirelinks), module:systemName())
 			else
-				say(player, "All {s blue} have been disabled.", module:systemName())
+				mfchat.say(player, "All {s blue} have been disabled.", module:systemName())
 			end
 		end
 	end
 end
 
 local function shieldToggler(module, enable, player, action)
-	local say, warn, error = function() end, function() end, function() end
-	if IsValid(player) and player:isPlayer() then
-		say = mfchat.say
-		warn = mfchat.warn
-		error = mfchat.error
-	end
-
 	if not IsValid(module) then
-		error(player, "{s blue} not found.", module:entityName())
+		mfchat.error(player, "{s blue} not found.", module:entityName())
 		return
 	elseif not IsValid(mfwire.getModuleByClass("ship_core")) then
-		error(player, "{s blue} not found.", mfwire.getModuleByClass("ship_core"):entityName())
+		mfchat.error(player, "{s blue} not found.", mfwire.getModuleByClass("ship_core"):entityName())
 		return
 	elseif not IsValid(mfwire.getModuleByClass("stargazer_node")) then
-		error(player, "{s blue} not found.", mfwire.getModuleByClass("stargazer_node"):entityName())
+		mfchat.error(player, "{s blue} not found.", mfwire.getModuleByClass("stargazer_node"):entityName())
 		return
 	end
 
@@ -120,26 +115,26 @@ local function shieldToggler(module, enable, player, action)
 	if enable then
 		if wirelink["Active"] == 1 then
 			if action == "raise" then
-				error(player, "The shields are already raised.")
+				mfchat.error(player, "The shields are already raised.")
 			elseif action == "up" then
-				error(player, "Shields already up.")
+				mfchat.error(player, "Shields already up.")
 			else
-				error(player, "The {s blue} is already active.", module:entityName())
+				mfchat.error(player, "The {s blue} is already active.", module:entityName())
 			end
 
 			return
 		elseif wirelink["State"] == "Awaiting Activation" then
-			error(player, "The {s blue} is awaiting activation.", module:entityName())
+			mfchat.error(player, "The {s blue} is awaiting activation.", module:entityName())
 			return
 		end
 	else
 		if wirelink["Active"] == 0 and wirelink["State"] ~= "Awaiting Activation" then
 			if action == "lower" then
-				error(player, "The shields are already lowered.")
+				mfchat.error(player, "The shields are already lowered.")
 			elseif action == "down" then
-				error(player, "Shields already down.")
+				mfchat.error(player, "Shields already down.")
 			else
-				error(player, "The {s blue} is already inactive.", module:entityName())
+				mfchat.error(player, "The {s blue} is already inactive.", module:entityName())
 			end
 
 			return
@@ -152,11 +147,11 @@ local function shieldToggler(module, enable, player, action)
 
 		if module:class() == "st_shield_emitter" then
 			if action == "raise" then
-				say(player, "Raising shields.")
+				mfchat.say(player, "Raising shields.")
 			elseif action == "up" then
-				say(player, "Shields up.")
+				mfchat.say(player, "Shields up.")
 			else
-				say(player, "Enabling the {s blue}.", module:systemName())
+				mfchat.say(player, "Enabling the {s blue}.", module:systemName())
 			end
 		else
 			local cur, max = wirelink["Current Energy"], wirelink["Max Energy"]
@@ -164,37 +159,37 @@ local function shieldToggler(module, enable, player, action)
 			if cur < max then
 				local delay = 0.5
 
-				say(player, "Shields activated, current energy : {s green}/{s green} ({blue}{d 02 p}{white}).", tostring(cur), tostring(max), cur/max)
+				mfchat.say(player, "Shields activated, current energy : {s green}/{s green} ({blue}{d 02 p}{white}).", tostring(cur), tostring(max), cur/max)
 				timer.simple(delay, function()
 					local newCur = wirelink["Current Energy"]
 					local delta = (newCur - cur) / delay
 					local ETA = math.round((max - newCur) / delta, 2)
-					say(player, "ETA: {green}{d t}", ETA)
+					mfchat.say(player, "ETA: {green}{d t}", ETA)
 				end)
 			else
 				if action == "raise" then
-					say(player, "Raising shields.")
+					mfchat.say(player, "Raising shields.")
 				elseif action == "up" then
-					say(player, "Shields up.")
+					mfchat.say(player, "Shields up.")
 				else
-					say(player, "Enabling the {s blue}.", module:systemName())
+					mfchat.say(player, "Enabling the {s blue}.", module:systemName())
 				end
 			end
 		end
 
 		if wirelink["Subsystem Health"] < 50 then
-			warn(player, "Shield subsystem health below 50%, impacts will deal 25% more damage.")
+			mfchat.warn(player, "Shield subsystem health below 50%, impacts will deal 25% more damage.")
 		elseif wirelink["Subsystem Health"] < 25 then
-			error(player, "Shield subsystem health below 25%, shields won't engage!")
+			mfchat.error(player, "Shield subsystem health below 25%, shields won't engage!")
 		end
 	else
 		wirelink["Activate"] = 0
 		if action == "lower" then
-			say(player, "Lowering shields.")
+			mfchat.say(player, "Lowering shields.")
 		elseif action == "down" then
-			say(player, "Shields down.")
+			mfchat.say(player, "Shields down.")
 		else
-			say(player, "Disabling the {s blue}.", module:systemName())
+			mfchat.say(player, "Disabling the {s blue}.", module:systemName())
 		end
 	end
 end
@@ -212,8 +207,16 @@ Module("stargazer_water_core", {entity = "Water Core", system = "Water Core"}, t
 Module("stargazer_refinement_core", {entity = "Refinement Core", system = "Refinery"}, true, true, standardToggler)
 Module("stargazer_ls_core", {entity = "Life Support Core", system = "Life Support"}, true, true, standardToggler)
 
+---Misc Modules
+Module("st_forcefield_emitter", {entity = "Forcefield Emitters", system = "Forcefields"}, false, true, standardToggler)
+
 --Finds which modules match the given string and turns them on if only 1 match remains.
 local function toggleModule(player, data)
+	if not player:isPermitted("module.toggle") then
+		mfchat.error(player, "You are not allowed to toggle modules.")
+		return
+	end
+
 	local enable = data.action == "enable" or data.action == "e"
 	local moduleName = data.module
 
@@ -251,6 +254,11 @@ local function toggleModule(player, data)
 end
 
 local function toggleShields(player, data)
+	if not player:isPermitted("module.toggle") then
+		mfchat.error(player, "You are not allowed to toggle modules.")
+		return
+	end
+
 	local shields
 	local stShield = mfwire.getModuleByClass("st_shield_emitter")
 	local atlShield = mfwire.getModuleByClass("atlantis_shield_emitter")
@@ -282,3 +290,69 @@ mfchat.addCommand("(d)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module"
 mfchat.addCommand("shields? (%w+)", toggleShields, {{"action", "choice:up,down"}})
 mfchat.addCommand("(raise) shields?", toggleShields, {{"action", "any"}})
 mfchat.addCommand("(lower) shields?", toggleShields, {{"action", "any"}})
+
+---Self-destruction
+
+local function selfDestruct(player, data)
+	local engage = data.action == "engage" or data.action == "online"
+
+	if engage and not player:isPermitted("selfdestruct.engage") then
+		mfchat.error(player, "You are not allowed to engage self-destruction.")
+		return
+	elseif not player:isPermitted("selfdestruct.abort") then
+		mfchat.error(player, "You are not allowed to cancel self-destruction.")
+		return
+	end
+
+	local shipCore = mfwire.getModuleByClass("ship_core")
+	if not IsValid(shipCore) then
+		mfchat.error(player, "{s blue} not found.", shipCore:entityName())
+	end
+
+	if engage then
+		local length = data.length
+		if length ~= math.clamp(length, 0, 300) then
+			mfchat.error(player, "The self-destruction delay must be within 0 second and 5 minutes.", 0, 300)
+			return
+		elseif timer.exists("self-destruction") then
+			mfchat.error(player, "Self-destruction already on the way.")
+			return
+		end
+
+		local i = 0
+		timer.create("self-destruction", 1, length, function()
+			i = i + 1
+
+			if not IsValid(shipCore) then
+				mfchat.error(player, "{s blue} not found, cancelling self-destruction.", shipCore:entityName())
+				timer.remove("self-destruction")
+				return
+			end
+
+			if i == length then
+				shipCore:getEntity():selfDestruct()
+				mfchat.say(player, "Self-destructing the ship.")
+			end
+		end)
+
+		mfchat.warn(player, "Self-destruction engaged, destroying the ship in {d 2 T}.", length)
+		if player ~= ents.owner() then
+			mfchat.warn(ents.owner(), "{P} has engaged self-destruction.", player)
+		end
+	else
+		if timer.exists("self-destruction") then
+			timer.remove("self-destruction")
+			mfchat.say(player, "Cancelling self-destruction.")
+		else
+			mfchat.error(player, "No self-destruction sequence has been started.")
+			return
+		end
+	end
+end
+
+mfchat.addCommand("(engage) self%-?destructi?o?n? (%w*)", selfDestruct, {{"action", "any"}, {"length", "number"}})
+mfchat.addCommand("(disengage) self%-?destructi?o?n?", selfDestruct, {{"action", "any"}})
+mfchat.addCommand("(abort) self%-?destructi?o?n?", selfDestruct, {{"action", "any"}})
+
+mfchat.addCommand("self%-?destructi?o?n? (online) (%w*)", selfDestruct, {{"action", "any"}, {"length", "number"}})
+mfchat.addCommand("self%-?destructi?o?n? (offline)", selfDestruct, {{"action", "any"}})

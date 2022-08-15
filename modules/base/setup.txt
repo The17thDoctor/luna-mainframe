@@ -1,4 +1,4 @@
---@name Luna Mainframe | Module | Setup
+--@name Luna Mainframe | Module | Mainframe Setup
 --@author The17thDoctor
 
 if SERVER then
@@ -89,8 +89,12 @@ if SERVER then
 		mfchat.say(player, "{P} has been greeted.", data.target)
 	end, {{"target", "player"}})
 
-	--mfchat.say(ents.owner(), "Salutations {P}", ents.owner())
-	--mfchat.say(ents.owner(), "If you require any help, please use {blue}/{s} help{white}.", mainframe.getSetting("Command Prefix", "value"))
+
+	if luna.shouldGreet then
+		mfchat.say(ents.owner(), "Salutations {P}", ents.owner())
+		mfchat.say(ents.owner(), "If you require any help, please use {blue}/{s} help{white}.", mainframe.getSetting("Command Prefix", "value"))
+		mfchat.warn(ents.owner(), "This mainframe is currently under developpement and thus is lacking many features.")
+	end
 
 	mainframe.loadFile()
 else

@@ -1,0 +1,84 @@
+--@name Luna Mainframe | Module | Transportation
+--@author The17thDoctor
+
+if CLIENT then return end
+
+local warpLocations = {
+	default = {
+		["Hiigara"] = Vector(7266, 7675, -3878),
+		["Desert"] = Vector(10959, -10129, -7022),
+		["Lava"] = Vector(-10226, -106, -3185),
+		["Asteroids"] = Vector(-1588, -2734, -2376),
+		["Universe"] = {
+			Vector(7241, -5338, -3941),
+			Vector(7767, 933, -4406),
+			Vector(-4622, 3250, -10870),
+			Vector(219, -7203, -9816)
+		},
+		["Shakuras"] = Vector(-8009, -7292, 8934),
+		["Station"] = Vector(8460, -9451, 9593),
+		["Pegasus"] = {
+			Vector(1730, -8680, 7950),
+			Vector(2206, -4910, 7950),
+			Vector(727, -12966, 7950)
+		},
+		["Earth"] = Vector(-133, 7959, 10604),
+		["Moon"] = Vector(-4526, 13924, 10739),
+		["Milkyway"] = {
+			Vector(-12607, 8109, 8354),
+			Vector(-6951, 8014, 8348),
+			Vector(9205, 8197, 8995)
+		},
+		["Build 1"] = Vector(10495, 12284, -15153),
+		["Build 2"] = Vector(10509, 4117, -15153),
+		["Build 3"] = Vector(10524, -4066, -15153),
+		["Build 4"] = Vector(10538, -12271, -15153),
+		["Member Room"] = Vector(-92, -53, -15196),
+	},
+	custom  = mainframe.filedata.warpLocations or {},
+}
+
+local transLocations = {
+	default = {
+		["Earth"] = Vector( 2981, 8010, 8072 ),
+		["Moon"] = Vector( -4222, 13478, 9957 ),
+
+		["Shakuras"] = Vector( -7347.34, -3937, 6880 ),
+		["Space Station"] = Vector( 7830.67, -5864, 9408 ),
+
+		["Hiigara"] = Vector( 7173, 11847, -5855 ),
+		["Desert"] = Vector( 11657, -10662, -9183 ),
+		["Lava"] = Vector( -11090, 375, -4655 ),
+		["Hell"] = Vector( -8169, -1015, -4815 ),
+
+		["Build 1"] = Vector( 5350, 12290, -16144 ),
+		["Build 2"] = Vector( 5350, 4094, -16144 ),
+		["Build 3"] = Vector( 5350, -4094, -16144 ),
+		["Build 4"] = Vector( 5350, -12290, -16144 ),
+	},
+	custom = mainframe.filedata.transLocations or {},
+}
+
+--TSCM Drives
+Module("bsg_drive", {system = "FTL Drive", entity = "BSG Drive"}, true, false, nil, {warpDrive = true})
+Module("ship_drive", {system = "Ship Drive", entity = "Ship Drive"}, true, false, nil, {warpDrive = true})
+Module("spore_drive", {system = "Spore Drive", entity = "Spore Drive"}, true, false, nil, {warpDrive = true})
+Module("sg_hyperdrive", {system = "Hyperdrive", entity = "Hyperdrive"}, true, false, nil, {warpDrive = true})
+Module("st_warp_drive", {system = "Warp Drive", entity = "Warp Drive"}, true, false, nil, {warpDrive = true})
+Module("quantum_slipstream_drive", {system = "Quantum Slipstream", entity = "Quantum Slipstream Drive"}, true, false, nil, {warpDrive = true})
+
+--Misc Drives
+Module("warpdrive", {system = "Warp Drive", entity = "SBEP Drive"}, true, false, nil, {activation = "Warp", destination = "Destination", warpDrive = true})
+
+local function engageWarp(drive, position, angle, player)
+	if not IsValid(drive) then
+		mfchat.error(player, "{s blue} not found.", drive:entityName())
+		return
+	end
+
+	if not drive:extraData().warpDrive then
+		error("Given module is not a warp drive.", 2)
+	end
+
+
+end

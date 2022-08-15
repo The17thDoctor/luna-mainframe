@@ -118,14 +118,17 @@ end
 --Gets the entity(ies) for the specified module's class
 function moduleMeta:getEntity()
 	if self:isUnique() then
-		if IsValid(self.entity) then
+		if IsValid(self.entity) and findFilter(self.entity) then
 			return self.entity
 		else
+			self.entity = nil
 			local result = find.byClass(self:class(), findFilter)
 
 			if IsValid(result[1]) then
 				self.entity = result[1]
 				return self.entity
+			else
+				return nil
 			end
 		end
 	else
@@ -154,7 +157,7 @@ function moduleMeta:isValid()
 	local entities = self:getEntity()
 
 	if self:isUnique() then
-		return IsValid(entities)
+		return IsValid(entities) and findFilter(entities)
 	else
 		return #entities > 0
 	end

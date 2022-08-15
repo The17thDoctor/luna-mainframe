@@ -75,6 +75,8 @@ function mainframe.addToGlobalEnvironment(var, varName)
 end
 
 if SERVER then
+	mainframe.filedata = {}
+
 	---WHITELIST & PERMISSIONS
 
 	mainframe.whitelist		= {}
@@ -364,6 +366,7 @@ if SERVER then
 			data.blacklist = mainframe.blacklist
 			data.permalist = mainframe.permalist
 			data.settings  = mainframe.settings
+			data.filedata  = mainframe.filedata
 
 			local jsonData = json.serialize(data, true)
 			file:write(jsonData)
@@ -390,7 +393,8 @@ if SERVER then
 			if success then
 				mainframe.blacklist = data.blacklist or mainframe.blacklist
 				mainframe.permalist = data.permalist or mainframe.permalist
-				mainframe.settings	= data.settings or mainframe.settings
+				mainframe.settings	= data.settings  or mainframe.settings
+				mainframe.filedata  = data.filedata  or mainframe.filedata
 				return true
 			else
 				if mainframe.saveFile() then

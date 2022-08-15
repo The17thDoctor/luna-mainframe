@@ -15,6 +15,7 @@
 --Luna's extra settings
 luna = {}
 
+luna.shouldGreet = false --Should luna greet you on startup ?
 
 --Luna's Base Libraries
 bootstrapper.addLibrary("essentials")
