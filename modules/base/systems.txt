@@ -281,11 +281,10 @@ local function toggleShields(player, data)
 	end
 end
 
-mfchat.addCommand("(enable)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
-mfchat.addCommand("(disable)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
-
-mfchat.addCommand("(e)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
-mfchat.addCommand("(d)[the ]* (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
+mfchat.addCommand("(enable) (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
+mfchat.addCommand("(disable) (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
+mfchat.addCommand("(enable) the (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
+mfchat.addCommand("(disable) the (.+)", toggleModule, {{"action", "any"}, {"module", "any"}})
 
 mfchat.addCommand("shields? (%w+)", toggleShields, {{"action", "choice:up,down"}})
 mfchat.addCommand("(raise) shields?", toggleShields, {{"action", "any"}})

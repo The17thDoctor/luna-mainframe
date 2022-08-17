@@ -34,6 +34,8 @@ local entityMetatableList = {
 function libraries.checkType(value, typeToCheck, argumentName, level)
 	level = level or 0
 
+	argumentName = argumentName or ""
+
 	if typeToCheck == "Entity" then
 		for i = 1, #entityMetatableList do
 			if type(value) == entityMetatableList[i] then

@@ -1,5 +1,6 @@
 --@name Luna Mainframe | Module | Transportation
 --@author The17thDoctor
+--@class none
 
 if CLIENT then return end
 
@@ -59,6 +60,14 @@ local transLocations = {
 	custom = mainframe.filedata.transLocations or {},
 }
 
+local jumpHistory = {}
+
+mainframe.registerPermission("warp", true)
+mainframe.registerPermission("warp.back", true)
+mainframe.registerPermission("warp.offset", true)
+mainframe.registerPermission("warp.location", true)
+mainframe.registerPermission("warp.toplayer", true)
+
 --TSCM Drives
 Module("bsg_drive", {system = "FTL Drive", entity = "BSG Drive"}, true, false, nil, {warpDrive = true})
 Module("ship_drive", {system = "Ship Drive", entity = "Ship Drive"}, true, false, nil, {warpDrive = true})
@@ -70,15 +79,237 @@ Module("quantum_slipstream_drive", {system = "Quantum Slipstream", entity = "Qua
 --Misc Drives
 Module("warpdrive", {system = "Warp Drive", entity = "SBEP Drive"}, true, false, nil, {activation = "Warp", destination = "Destination", warpDrive = true})
 
-local function engageWarp(drive, position, angle, player)
+local currentDrive
+
+local function getCurrentDrive()
+	if IsValid(currentDrive) then
+		return currentDrive
+	else
+		local drives = mfwire.getAllModules(function(module)
+			return module:extraData().warpDrive and IsValid(module)
+		end)
+
+		local drive = drives[1]
+		local favoriteDrive = mainframe.getSetting("Favorite Drive", "value")
+		if favoriteDrive ~= nil then
+			drive = mfwire.getModuleByClass(favoriteDrive) or drive
+		end
+
+		if IsValid(drive) then
+			currentDrive = drive
+		else
+			currentDrive = nil
+		end
+
+		return currentDrive
+	end
+end
+
+local function engageWarp(drive, position, angle, callback, dontRegister)
 	if not IsValid(drive) then
-		mfchat.error(player, "{s blue} not found.", drive:entityName())
+		callback(false, "no drive")
 		return
 	end
 
-	if not drive:extraData().warpDrive then
-		error("Given module is not a warp drive.", 2)
+	local extraData = drive:extraData()
+	if not extraData.warpDrive then
+		callback(false, "module is not a warp drive")
+		return
 	end
 
+	if stargate.locationJammed(position, ents.owner()) then
+		callback(false, "location jammed")
+		return
+	end
+
+	local wirelink = drive:getWirelink()
+	local activation, destination = extraData.activation or "Activate", extraData.destination or "Destination"
+
+	if wirelink["Active"] == 1 then
+		callback(false, "drive active")
+		return
+	end
+
+	if position.isLocal then
+		position.value = drive:getEntity():toWorld(position.value)
+	end
+
+	if not angle.isLocal then
+		angle.value = drive:getEntity():toLocal(angle.value)
+	end
+
+	if position.value == drive:getEntity():pos() then
+		callback(false, "already there")
+		return
+	end
+
+	wirelink[destination] = position.value
+	wirelink["Angle Offset"] = angle.value
+	wirelink[activation] = 1
+
+	timer.simple(0.2, function()
+		local fail = false
+		if wirelink["Blocked"] then
+			callback(false, "trajectory blocked")
+			fail = true
+		elseif wirelink["Active"] == 0 then
+			callback(false, "fail")
+			fail = true
+		end
+
+		wirelink[destination] = Vector()
+		wirelink["Angle Offset"] = Angle()
+		wirelink[activation] = 0
+		if not fail then
+
+			if not dontRegister then
+				jumpHistory[#jumpHistory+1] = {
+					position = {isLocal = false, value = drive:getEntity():pos()},
+					angle = {isLocal = false, value = drive:getEntity():ang()}
+				}
+			end
+
+			callback(true)
+		end
+	end)
+end
+
+local warpActions = {
+	jump   = "Jumping",
+	warp   = "Warping",
+	yeet   = "Yeeting",
+	go     = "Going",
+	travel = "Travelling"
+}
+
+local function destinationWarp(player, data)
+
+	local matches = {}
+
+	if data.destination == "me" then
+		matches[1] = {1, "you", player:pos()}
+	else
+		for name, value in pairs(warpLocations.default) do
+			local s, e = string.find(name:lower(), data.destination)
+			if s ~= nil and e ~= nil then
+				matches[#matches+1] = {s, name, value}
+			end
+		end
+
+		for name, value in pairs(warpLocations.custom) do
+			local s, e = string.find(name:lower(), data.destination)
+			if s ~= nil and e ~= nil then
+				matches[#matches+1] = {s, name, value}
+			end
+		end
+
+		if #matches == 0 then
+			mfchat.error(player, "Location not found.")
+			return
+		end
+
+		table.sort(matches, function(a, b)
+			return a[1] < b[1]
+		end)
+	end
+
+	local destination = matches[1]
+
+	local name, position = destination[2]
+	if type(destination[3]) == "table" then
+		for i = 1, #destination[3] do
+			if not stargate.locationJammed(destination[3][i], ents.owner()) then
+				position = destination[3][i]
+				break
+			end
+		end
+	elseif not stargate.locationJammed(destination[3], ents.owner()) then
+		position = destination[3]
+	end
+
+	if position == nil then
+		mfchat.error(player, "No free position found for {s blue}.", name)
+		return
+	end
+
+	position = {isLocal = false, value = position}
+	local angle = {isLocal = true, value = Angle()}
+
+	local drive = getCurrentDrive()
+	if not IsValid(drive) then
+		mfchat.error(player, "Warp drive not found.")
+		return
+	end
+
+	engageWarp(drive, position, angle, function(success, reason)
+		if success then
+			if name == "you" then
+				mfchat.say(player, "{s} to {s color}.", warpActions[data.action], name, player:getTeamColor())
+			else
+				mfchat.say(player, "{s} to {s blue}.", warpActions[data.action], name)
+			end
+			return
+		end
+
+		if reason == "drive active" then
+			mfchat.error(player, "The ship is already {s}.", warpActions[data.action]:lower())
+		elseif reason == "trajectory blocked" then
+			mfchat.error(player, "Unable to {s}, trajectory blocked.", data.action)
+		elseif reason == "fail" then
+			mfchat.error(player, "Unable to {s} for unknown reasons.", data.action)
+		elseif reason == "already there" then
+			mfchat.error(player, "Unable to {s}, we are already there.", data.action)
+		end
+	end)
+end
+
+mfchat.addCommand("(%w+) to (%w+)", destinationWarp, {{"action", "choice:jump,warp,yeet,go,travel"},{"destination", "any"}})
+
+local function warpBack(player, data)
+	if not player:isPermitted("warp.back") then
+		mfchat.error("You are not allowed to warp the ship back.")
+		return
+	end
+
+	local drive = getCurrentDrive()
+	if not IsValid(drive) then
+		mfchat.error(player, "Warp drive not found.")
+		return
+	end
+
+	if #jumpHistory == 0 then
+		mfchat.error(player, "No previous location registered.")
+		return
+	end
+
+	local lastLocation = jumpHistory[#jumpHistory]
+	engageWarp(drive, lastLocation.position, lastLocation.angle, function(success, reason)
+		if success then
+			mfchat.say(player, "{s} to previous location.", warpActions[data.action])
+			jumpHistory[#jumpHistory] = nil
+			return
+		end
+
+		if reason == "drive active" then
+			mfchat.error(player, "The ship is already {s}.", warpActions[data.action]:lower())
+		elseif reason == "trajectory blocked" then
+			mfchat.error(player, "Unable to {s} back, trajectory blocked.", data.action)
+		elseif reason == "fail" then
+			mfchat.error(player, "Unable to {s} back for unknown reasons.", data.action)
+		elseif reason == "already there" then
+			mfchat.error(player, "Unable to {s} back, we are already there.", data.action)
+		end
+	end, true)
+end
+
+mfchat.addCommand("(%w+) back", warpBack, {{"action", "choice:jump,warp,yeet,go,travel"}})
+
+local function warpOffset(player, data)
 
 end
+
+mfchat.addCommand("(%w+) (%w+) by (%w+)", warpOffset, {
+	{"action", "choice:jump,warp,yeet,go,travel"},
+	{"direction", "choice:up,down,left,right,forward,back"},
+	{"amount", "number"}
+})
