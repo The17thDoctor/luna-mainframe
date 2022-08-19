@@ -190,6 +190,7 @@ end
 
 ---Standard Chat Formatters
 
+--TODO: Rewrite all of that mess
 local function numberFormatter(options, values)
 	checkType(values[1], "number")
 
@@ -209,14 +210,14 @@ local function numberFormatter(options, values)
 		format = x
 	end
 
-	if format == nil then error("Invalid formatting code '"..formatter.."'") end
-
 	if rounding ~= nil then
 		if format == "p" then rounding = rounding + 2 end
 		number = math.round(number, rounding)
 	end
 
-	if format == "s" then
+	if format == nil then
+		formatTable[#formatTable+1] = tostring(number)
+	elseif format == "s" then
 		splt = tostring(number):explode(".")
 		splt[1] = string.reverse(splt[1])
 		local int, dec = "", splt[2]
@@ -760,16 +761,18 @@ function mfchat.parseCommand(player, message)
 						if IsValid(ply) then
 							variables[k] = ply
 						else
-							makeErrorMessage(player, pattern, result, i, "playername")
-							return false, "error in command"
+							--makeErrorMessage(player, pattern, result, i, "playername")
+							--return false, "error in command"
+							goto skip
 						end
 					elseif v == "number" then
 						local nb = tonumber(result[i])
 						if nb ~= nil then
 							variables[k] = nb
 						else
-							makeErrorMessage(player, pattern, result, i, "number")
-							return false, "error in command"
+							--makeErrorMessage(player, pattern, result, i, "number")
+							--return false, "error in command"
+							goto skip
 						end
 					elseif v == "any" then
 						variables[k] = result[i]
@@ -786,8 +789,9 @@ function mfchat.parseCommand(player, message)
 						end
 
 						if not found then
-							makeErrorMessage(player, pattern, result, i, table.concat(choices, ", "))
-							return false, "error in command"
+							--makeErrorMessage(player, pattern, result, i, table.concat(choices, ", "))
+							--return false, "error in command"
+							goto skip
 						end
 					end
 				else
@@ -797,6 +801,8 @@ function mfchat.parseCommand(player, message)
 
 			return func, variables
 		end
+
+		::skip::
 	end
 
 	return false, "no matching command"
