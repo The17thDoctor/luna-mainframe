@@ -34,13 +34,13 @@ local mfchat = {} --This is the main chat library table.
 		{d}			: 3.52682 -> 3.52682
 		{d 3}		: 3.52682 -> 3.527
 		{d 06}		: 3.52682 -> 3.526820 (Adds trailing zeros)
-		{d s}		: 1000000 -> 1 000 000
-		{d s}		: 1525.15 -> 1 525.15
-		{d p}		: 0.156   -> 15.6%
-		{d 2 p}		: 0.15832 -> 15.83%
-		{d t}		: 3031    -> 50m31s
-		{d T}		: 3031	  -> 50 minutes 31 seconds
-		{d -1 t}	: 3031	  -> 50m30s (Rounds up)
+		{ds}		: 1000000 -> 1 000 000
+		{ds}		: 1525.15 -> 1 525.15
+		{dp}		: 0.156   -> 15.6%
+		{dp 2}		: 0.15832 -> 15.83%
+		{dt}		: 3031    -> 50m31s
+		{dT}		: 3031	  -> 50 minutes 31 seconds
+		{dt -1}	: 3031	  -> 50m30s (Rounds up)
 
 
 	s <color> : Any string, equivalent to lua concatenation.
@@ -141,29 +141,8 @@ local function explodeNoLoss(str, separator)
 		separators[#separators+1] = sep
 	end
 
-
 	return words, separators
 end
-
-local timeUnits = {
-	long = { --The long name for each unit, both singular and plural.
-		{"second " 	, "seconds"			},
-		{"minute " 	, "minutes"			},
-		{"hour "   	, "hours"			},
-		{"day "    	, "days"			},
-		{"week "   	, "weeks"			},
-		{"month "  	, "months"			},
-		{"year "   	, "years"			},
-		{"decade " 	, "decades"			},
-		{"century "	, "centuries"		},
-	},
-	short = { --The short name for each unit.
-		"s", "m", "h", "d", "w", "M", "Y", "D", "C"
-	},
-	span = { --The length of each unit in seconds.
-		1, 60, 3600, 86400, 604800, 2592000, 31536000, 315360000, 3153600000
-	}
-}
 
 local checkType = libraries.checkType
 local recursiveKey = {
@@ -202,6 +181,7 @@ local function stringFormatter(components, arguments, messageTable)
 
 	if mfchat.color[components[2]] ~= nil then
 		messageTable[#messageTable+1] = mfchat.color[components[2]]
+		messageTable[#messageTable+1] = arguments[1]
 		messageTable[#messageTable+1] = luc
 	elseif components[2] == "color" then
 		if components[3] ~= nil then
@@ -228,7 +208,262 @@ local function stringFormatter(components, arguments, messageTable)
 	return argumentsUsed
 end
 
+local function numberFormatter(components, arguments, messageTable)
+	local number = arguments[1]
+	checkType(number, "number", "number")
+
+	if components[1] == "dp" then
+		number = number * 100
+	end
+
+	local rounding = tonumber(components[2])
+	if rounding ~= nil then
+		number = math.round(number, rounding)
+	elseif components[2] ~= nil then
+		error("Invalid rounding parameter")
+	end
+
+	local str = tostring(number)
+	if rounding ~= nil and rounding ~= 0 and utf8.getChar(components[2], 1) == "0" and utf8.len(components[2]) > 1 then
+		local split = str:explode(".")
+		local integer = split[1]
+		local decimals = split[2] or ""
+
+		for i = 1, rounding - utf8.len(decimals) do
+			decimals = decimals.."0"
+		end
+
+		str = integer.."."..decimals
+	end
+
+	if components[1] == "dp" then
+		str = str.."%"
+	end
+
+	messageTable[#messageTable+1] = str
+	return 1
+end
+
+local function niceNumberFormatter(components, arguments, messageTable)
+	local number = arguments[1]
+	checkType(number, "number", "number")
+
+	local rounding = tonumber(components[2])
+	if rounding ~= nil then
+		number = math.round(number, rounding)
+	elseif components[2] ~= nil then
+		error("Invalid rounding parameter")
+	end
+
+	local str = tostring(number)
+	local split = str:explode(".")
+	local _, integer = explodeNoLoss(string.reverse(split[1]), "%d%d?%d?", true)
+	integer = string.reverse(table.concat(integer, " "))
+	str = integer
+
+	if rounding ~= nil and rounding ~= 0 and utf8.getChar(components[2], 1) == "0" and utf8.len(components[2]) > 1 then
+		local decimals = split[2] or ""
+
+		for i = 1, rounding - utf8.len(decimals) do
+			decimals = decimals.."0"
+		end
+
+		str = integer.."."..decimals
+	elseif split[2] ~= nil then
+		str = integer.."."..split[2]
+	end
+
+	messageTable[#messageTable+1] = str
+	return 1
+end
+
+local timeUnits = {
+	long = { --The long name for each unit, both singular and plural.
+		{"second" 	, "seconds"		},
+		{"minute" 	, "minutes"		},
+		{"hour"   	, "hours"		},
+		{"day"    	, "days"		},
+		{"week"   	, "weeks"		},
+		{"month"  	, "months"		},
+		{"year"   	, "years"		},
+		{"decade" 	, "decades"		},
+		{"century"	, "centuries"	},
+	},
+	short = { --The short name for each unit.
+		"s", "m", "h", "d", "w", "M", "Y", "D", "C"
+	},
+	span = { --The length of each unit in seconds.
+		1, 60, 3600, 86400, 604800, 2592000, 31536000, 315360000, 3153600000
+	}
+}
+
+local function timeFormatter(components, arguments, messageTable)
+	local number = arguments[1]
+	checkType(number, "number", "number")
+
+	local rounding = tonumber(components[2])
+	if rounding ~= nil then
+		number = math.round(number, rounding)
+	elseif components[2] ~= nil then
+		error("Invalid rounding parameter")
+	end
+
+	local spans = timeUnits.span
+
+	local formatTable = {}
+	if components[1] == "dt" then
+		local suffixes = timeUnits.short
+		for i = #spans, 1, -1 do
+			local n = math.floor(number / spans[i])
+			if n > 0 then
+				number = number - n * spans[i]
+				formatTable[#formatTable+1] = tostring(n)..suffixes[i]
+			end
+		end
+
+		messageTable[#messageTable+1] = table.concat(formatTable, "")
+		return 1
+	else
+		local suffixes = timeUnits.long
+		for i = #spans, 1, -1 do
+			local n = math.floor(number / spans[i])
+			if n > 0 then
+				number = number - n * spans[i]
+
+				if n > 1 then
+					formatTable[#formatTable+1] = tostring(n).." "..suffixes[i][2]
+				else
+					formatTable[#formatTable+1] = tostring(n).." "..suffixes[i][1]
+				end
+			end
+		end
+
+		messageTable[#messageTable+1] = table.concat(formatTable, " ")
+		return 1
+	end
+end
+
+local function angleFormatter(components, arguments, messageTable)
+	local angle = arguments[1]
+	checkType(angle, "Angle", "angle")
+
+	local pitch, yaw, roll
+	if tonumber(components[2]) ~= nil then
+		pitch 	= mfchat.parseMessage("{d {s}}", components[2], angle.p)[1]
+		yaw 	= mfchat.parseMessage("{d {s}}", components[2], angle.y)[1]
+		roll 	= mfchat.parseMessage("{d {s}}", components[2], angle.r)[1]
+	elseif components[2] == nil then
+		pitch 	= mfchat.parseMessage("{d}", angle.p)[1]
+		yaw 	= mfchat.parseMessage("{d}", angle.y)[1]
+		roll 	= mfchat.parseMessage("{d}", angle.r)[1]
+	else
+		error("Invalid rounding parameter")
+	end
+
+	local angleTable = mfchat.parseMessage("Angle({s green}, {s green}, {s green})", pitch, yaw, roll)
+
+	for i = 1, #angleTable do
+		messageTable[#messageTable+1] = angleTable[i]
+	end
+	return 1
+end
+
+local function vectorFormatter(components, arguments, messageTable)
+	local vector = arguments[1]
+	checkType(vector, "Vector", "vector")
+
+	local pitch, yaw, roll
+	if tonumber(components[2]) ~= nil then
+		x = mfchat.parseMessage("{d {s}}", components[2], vector.x)[1]
+		y = mfchat.parseMessage("{d {s}}", components[2], vector.y)[1]
+		z = mfchat.parseMessage("{d {s}}", components[2], vector.z)[1]
+	elseif components[2] == nil then
+		x = mfchat.parseMessage("{d}", vector.x)[1]
+		y = mfchat.parseMessage("{d}", vector.y)[1]
+		z = mfchat.parseMessage("{d}", vector.z)[1]
+	else
+		error("Invalid rounding parameter")
+	end
+
+	local angleTable = mfchat.parseMessage("Vector({s green}, {s green}, {s green})", x, y, z)
+
+	for i = 1, #angleTable do
+		messageTable[#messageTable+1] = angleTable[i]
+	end
+	return 1
+end
+
+local function colorFormatter(components, arguments, messageTable)
+	if components[2] ~= nil then
+		if tonumber(components[2]) ~= nil then
+			local color = Color(tonumber(components[2]), tonumber(components[3]) or 0, tonumber(components[4]) or 0)
+			messageTable[#messageTable+1] = color
+			return 0
+		else
+			error("Invalid RGB code")
+		end
+	else
+		local color = arguments[1]
+		checkType(color, "Color", "color")
+		messageTable[#messageTable+1] = color
+		return 1
+	end
+end
+
+local function entityFormatter(components, arguments, messageTable)
+	local entity = arguments[1]
+	checkType(entity, "Entity", "entity")
+	if not IsValid(entity) then error("Invalid entity") end
+
+	if components[1] == "e" then
+		messageTable[#messageTable+1] = "["..entity:index().."] "..entity:class()
+	elseif components[1] == "E" then
+		messageTable[#messageTable+1] = entity:class()
+	elseif components[1] == "en" then
+		messageTable[#messageTable+1] = entity:getPrintName() or entity:class()
+	end
+
+	return 1
+end
+
+local function playerFormatter(components, arguments, messageTable)
+	local player = arguments[1]
+	checkType(player, "Player", "player")
+	if not IsValid(player) then error("Invalid player entity") end
+
+	local luc = lastUsedColor(messageTable)
+	local name = player:name()
+	if components[2] ~= nil then
+		name = components[2]
+	end
+
+	if components[1] == "P" then
+		messageTable[#messageTable+1] = player:getTeamColor()
+	end
+
+	messageTable[#messageTable+1] = name
+
+	if components[1] == "P" then
+		messageTable[#messageTable+1] = luc
+	end
+
+	return 1
+end
+
+mfchat.addStringFormatter("a", angleFormatter)
+mfchat.addStringFormatter("dt", timeFormatter)
+mfchat.addStringFormatter("dT", timeFormatter)
+mfchat.addStringFormatter("p", playerFormatter)
+mfchat.addStringFormatter("P", playerFormatter)
+mfchat.addStringFormatter("e", entityFormatter)
+mfchat.addStringFormatter("E", entityFormatter)
+mfchat.addStringFormatter("v", vectorFormatter)
 mfchat.addStringFormatter("s", stringFormatter)
+mfchat.addStringFormatter("d", numberFormatter)
+mfchat.addStringFormatter("en", entityFormatter)
+mfchat.addStringFormatter("dp", numberFormatter)
+mfchat.addStringFormatter("color", colorFormatter)
+mfchat.addStringFormatter("ds", niceNumberFormatter)
 
 function mfchat.parseMessage(message, ...)
 	local words, formatCodes = explodeNoLoss(message, "\\?%b{}") --Catch all {} pairs (even the escaped ones)
@@ -244,14 +479,11 @@ function mfchat.parseMessage(message, ...)
 		arguments = arguments[3]
 	end
 
-	messageTable[1] = words[1]
+	if words[1] ~= "" then messageTable[1] = words[1] end
 	for i = 1, #formatCodes do
 		if utf8.getChar(formatCodes[i], 1) == "\\" then
 			messageTable[#messageTable+1] = formatCodes[i]
-			goto skip
-		end
-
-		do
+		else
 			local formatCode = utf8.sub(formatCodes[i], 2, utf8.len(formatCodes[i])-1) --Remove {}
 			local _, recursiveFormatCodes = explodeNoLoss(formatCode, "\\?%b{}")
 
@@ -281,7 +513,6 @@ function mfchat.parseMessage(message, ...)
 			end
 		end
 
-		::skip::
 		messageTable[#messageTable+1] = words[i+1] or nil
 	end
 
