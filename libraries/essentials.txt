@@ -279,7 +279,7 @@ if SERVER then
 			currentPermission = currentPermission.."."..nodes[i+1]
 		end
 
-		mainframe.permissions[path] = allowedByDefault
+		mainframe.permissions[path] = allowedByDefault or false
 	end
 
 	--Returns the permissions granted to a specific player or false if he's part of the blacklist or not in any whitelist

@@ -407,7 +407,7 @@ function getModuleEnvironment(modulePath)
 				error("Duplicate "..ioType.." name : "..n, 2)
 			end
 
-			if string.find(n, "%W") ~= nil or utf8.sub(n, 1, 1) ~= utf8.sub(n, 1, 1):upper() or tonumber(utf8.sub(n, 1, 1)) ~= nil then
+			if string.find(n, "[^%w ]") ~= nil or utf8.sub(n, 1, 1) ~= utf8.sub(n, 1, 1):upper() or tonumber(utf8.sub(n, 1, 1)) ~= nil then
 				error("Invalid "..ioType.." name at index "..i.." (must be alphanumeric starting with upper-case)", 2)
 			end
 
@@ -462,15 +462,16 @@ function getModuleEnvironment(modulePath)
 
 			for i = 1, #names do
 				checkValidIO(names[i], types[i], i, "output")
-				table.add(outputs[1], names[i])
-				table.add(outputs[2], types[i])
+				table.insert(outputs[1], names[i])
+				table.insert(outputs[2], types[i])
 				outputNames[names[i]] = true
 
-				if type(descriptions[i]) ~= nil then
+				if descriptions[i] ~= nil and type(descriptions[i]) ~= "string" then
+
 					error("Invalid description type at index "..i..": "..tostring(descriptions[i]), 1)
 				end
 
-				table.add(outputs[3], descriptions[i])
+				table.insert(outputs[3], descriptions[i])
 				updateIO()
 			end
 		end

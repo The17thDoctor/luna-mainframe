@@ -11,6 +11,7 @@
 
 --@includedir luna/modules
 --@includedir luna/modules/base
+--@includedir luna/modules/custom
 
 --Luna's extra settings
 luna = {}

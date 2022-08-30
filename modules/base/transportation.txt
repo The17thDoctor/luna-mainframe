@@ -458,4 +458,73 @@ do
 	mfchat.addCommand("reset (%w+)", warpReset, {{"action", "choice:rotation,orientation"}})
 end
 
----Teleporting
+---Transporter
+
+mainframe.registerPermission("transporter", true)
+mainframe.registerPermission("transporter.topad", true)
+mainframe.registerPermission("transporter.toplayer", true)
+mainframe.registerPermission("transporter.tolocation", true)
+
+Module("transporter_pad", {system = "Transporter", entity = "Transporter Pad"}, true, false, nil, {transporter = true, type = "st"})
+Module("transporter", {system = "Transporter", entity = "Asgard Transporter"}, true, false, nil, {transporter = true, type = "asgard"})
+Module("asgard_transporter", {system = "Transporter", entity = "Asgard Transporter"}, true, false, nil, {transporter = true, type = "asgard"})
+
+local padCounts = {
+	["models/veegi/beampad/beampad_2p.mdl"] 	= 2,
+	["models/veegi/beampad/beampad.mdl"] 		= 1,
+	["models/slyfo_2/telepad_standalone.mdl"] 	= 6,
+	["models/slyfo_2/telepad_inhull.mdl"] 		= 6,
+}
+
+local function crapgardTransport(transporter, targets, destination, callback)
+	if not IsValid(transporter) then
+		callback(false, "transporter not found")
+		return
+	elseif #targets > 1 then
+		callback(false, "not enough pads")
+		return
+	end
+end
+
+local function asgardTransport(transporter, targets, destination, callback)
+	if not IsValid(transporter) then
+		callback(false, "transporter not found")
+		return
+	elseif #targets > 1 then
+		callback(false, "not enough pads")
+		return
+	end
+end
+
+local function starTrekTransport(transporter, targets, destination, callback)
+	if not IsValid(transporter) then
+		callback(false, "transporter not found")
+		return
+	elseif #targets > padCounts[transporter:getEntity():model()] then
+		callback(false, "not enough pads")
+		return
+	end
+end
+
+local function transportTargets(player, data)
+
+end
+
+--mfchat.addCommand("(%w+) (%w+) to (%w+)", transportTargets, {
+--	{"action", "choice:transport,beam,send,take"},
+--	{"targets", "any"},
+--	{"destination", "any"},
+--})
+--
+--mfchat.addCommand("(%w+) (%w+) to (%w+)'?s? (%w+)", transportTargets, {
+--	{"action", "choice:transport,beam,send,take"},
+--	{"targets", "any"},
+--	{"destination", "any"},
+--	{"targetDetails", "choice:ship,pad"}
+--})
+--
+--mfchat.addCommand("(%w+) (%w+) (up)", transportTargets, {
+--	{"action", "choice:transport,beam,send,take,scoop"},
+--	{"targets", "any"},
+--	{"destination", "any"},
+--})

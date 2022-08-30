@@ -195,6 +195,7 @@ local function stringFormatter(components, arguments, messageTable)
 		else
 			checkType(arguments[2], "Color")
 			messageTable[#messageTable+1] = arguments[2]
+			messageTable[#messageTable+1] = arguments[1]
 			argumentsUsed = 2
 		end
 
@@ -548,6 +549,7 @@ local function startQueueEmptying()
 end
 
 function mfchat.say(player, message, ...)
+	checkType(player, "Player", "player")
 	if not IsValid(player) or not player:isPlayer() then return end
 
 	local prefix = mainframe.getSetting("Chat Prefix", "value") or "Luna"
@@ -575,6 +577,7 @@ function mfchat.say(player, message, ...)
 end
 
 function mfchat.warn(player, message, ...)
+	checkType(player, "Player", "player")
 	if not IsValid(player) or not player:isPlayer() then return end
 
 	local prefix = mainframe.getSetting("Chat Prefix", "value") or "Luna"
@@ -602,6 +605,7 @@ function mfchat.warn(player, message, ...)
 end
 
 function mfchat.error(player, message, ...)
+	checkType(player, "Player", "player")
 	if not IsValid(player) or not player:isPlayer() then return end
 
 	local prefix = mainframe.getSetting("Chat Prefix", "value") or "Luna"
