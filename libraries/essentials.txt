@@ -37,13 +37,19 @@ function libraries.checkType(value, typeToCheck, argumentName, level)
 	argumentName = argumentName or ""
 
 	if typeToCheck == "Entity" then
+		local isEnt = false
 		for i = 1, #entityMetatableList do
-			if type(value) == entityMetatableList[i] then
+			if type(value) == entityMetatableList[i] and IsValid(value) then
+				isEnt = true
 				return
 			end
 		end
 
-		error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 3 + level)
+		if isEnt and not IsValid(value) then
+			error("Invalid entity", 3 + level)
+		else
+			error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 3 + level)
+		end
 	elseif typeToCheck == "Color" then
 		if getmetatable(value) ~= "Color" then
 			error("Invalid type for argument "..argumentName..", expected "..typeToCheck.." got "..type(value), 3 + level)
@@ -392,6 +398,8 @@ if SERVER then
 
 			local success, data = pcall(json.deserialize, jsonData)
 
+			data = data or {}
+
 			if success then
 				mainframe.blacklist = data.blacklist or mainframe.blacklist
 				mainframe.permalist = data.permalist or mainframe.permalist
@@ -582,6 +590,50 @@ if SERVER then
 		if mainframe.settings[name] == nil then error("Unknown setting", 2) end
 		mainframe.settings[name].value = mainframe.settings[name].default
 		return mainframe.saveFile()
+	end
+
+	---SHIP-WIDE PERSISTENT MEMORY
+	--[[
+		Allows the developper to store data on parts of the ship which lasts between restarts and dupes.
+		Since data are stored on entities, it only lasts as long as the entity itself.
+	]]--
+
+	local EntityMeta = starfall.getTypeDef("Entity")
+
+	--Gets the registered data on some entity.
+	function mainframe.getEntityData(entity)
+		checkType(entity, "Entity", "entity")
+
+		local data = entity:getWireName()
+		if data ~= "" then
+			return json.deserialize(data)
+		else
+			return nil
+		end
+	end
+
+	--Registers data onto an entity.
+	function mainframe.setEntityData(entity, table)
+		checkType(entity, "Entity", "entity")
+		checkType(table, "table", "table")
+
+		local dataString = json.serialize(table)
+		if string.len(dataString) > 400 then
+			return false, "too much data"
+		else
+			return true
+		end
+	end
+
+	function EntityMeta:getData()
+		checkType(self, "Entity", "entity")
+		return mainframe.getEntityData(self)
+	end
+
+	function EntityMeta:setData(table)
+		checkType(self, "Entity", "entity")
+		checkType(table, "table", "table")
+		return mainframe.setEntityData(self, table)
 	end
 end
 

@@ -1,0 +1,37 @@
+--@name Luna Mainframe | Module | Miscellaneous Code
+--@author
+
+if SERVER then
+	channels.listen("Mainframe Chatting", "MF Chat", function(entity, data)
+		if entity:owner() ~= ents.owner() or entity == ents.self() then return end
+
+		if data.message == "hi!" then
+			mfchat.say(ents.owner(), "Hi {s blue} o/", data.sender)
+
+			if not data.reply then
+				channels.send("Mainframe Chatting", {sender = "Luna", message = "hi!", reply = true})
+			end
+		end
+	end)
+
+	if luna.shouldGreetMainframes then channels.send("Mainframe Chatting", {sender = "Luna", message = "hi!"}) end
+
+	mfchat.addCommand("say hello to (%w+)", function(player, data)
+
+		local str = "Hello "
+		local len = utf8.len(data.target:name())
+		local i = 1
+		for w in string.gmatch(data.target:name(), ".") do
+			local c = Color.fromHSV(i/len, 0.7, 1)
+			str = str.."{color "..c.r.." "..c.g.." "..c.b.."}"..w
+			i = i + 1
+		end
+
+		str = str.."{white}!"
+
+		mfchat.say(data.target, str)
+		mfchat.say(player, "{P} has been greeted.", data.target)
+	end, {{"target", "player"}})
+else
+
+end

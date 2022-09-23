@@ -14,9 +14,8 @@
 --@includedir luna/modules/custom
 
 --Luna's extra settings
-luna = {}
-
 luna.shouldGreet = false --Should luna greet you on startup ?
+luna.shouldGreetMainframes = false --Should luna greet other mainframes ?
 
 --Luna's Base Libraries
 bootstrapper.addLibrary("essentials")

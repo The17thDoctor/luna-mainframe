@@ -12,6 +12,8 @@
 	The essentials library should be loaded first, environment last.
 ]]--
 
+luna = {}
+
 local function checkType(value, typeToCheck, argumentName, level)
 	level = level or 0
 	if typeToCheck == "Entity" then

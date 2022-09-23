@@ -476,7 +476,7 @@ local padCounts = {
 	["models/slyfo_2/telepad_inhull.mdl"] 		= 6,
 }
 
-local function crapgardTransport(transporter, targets, destination, callback)
+local function crapgardTransport(transporter, targets, destination, mode, callback)
 	if not IsValid(transporter) then
 		callback(false, "transporter not found")
 		return
@@ -486,7 +486,7 @@ local function crapgardTransport(transporter, targets, destination, callback)
 	end
 end
 
-local function asgardTransport(transporter, targets, destination, callback)
+local function asgardTransport(transporter, targets, destination, mode, callback)
 	if not IsValid(transporter) then
 		callback(false, "transporter not found")
 		return
@@ -496,7 +496,7 @@ local function asgardTransport(transporter, targets, destination, callback)
 	end
 end
 
-local function starTrekTransport(transporter, targets, destination, callback)
+local function starTrekTransport(transporter, targets, destination, mode, callback)
 	if not IsValid(transporter) then
 		callback(false, "transporter not found")
 		return
@@ -504,27 +504,35 @@ local function starTrekTransport(transporter, targets, destination, callback)
 		callback(false, "not enough pads")
 		return
 	end
+
+	local wirelink = transporter:getWirelink()
+
+	for i = 1, #targets do
+		if IsValid(targets[i]) then
+			wirelink["Target"..i] = targets[i]
+		end
+	end
 end
 
 local function transportTargets(player, data)
 
 end
 
---mfchat.addCommand("(%w+) (%w+) to (%w+)", transportTargets, {
---	{"action", "choice:transport,beam,send,take"},
---	{"targets", "any"},
---	{"destination", "any"},
---})
---
---mfchat.addCommand("(%w+) (%w+) to (%w+)'?s? (%w+)", transportTargets, {
---	{"action", "choice:transport,beam,send,take"},
---	{"targets", "any"},
---	{"destination", "any"},
---	{"targetDetails", "choice:ship,pad"}
---})
---
---mfchat.addCommand("(%w+) (%w+) (up)", transportTargets, {
---	{"action", "choice:transport,beam,send,take,scoop"},
---	{"targets", "any"},
---	{"destination", "any"},
---})
+mfchat.addCommand("(%w+) (%w+) to (%w+)", transportTargets, {
+	{"action", "choice:transport,beam,send,take"},
+	{"targets", "any"},
+	{"destination", "any"},
+})
+
+mfchat.addCommand("(%w+) (%w+) to (%w+)'?s? (%w+)", transportTargets, {
+	{"action", "choice:transport,beam,send,take"},
+	{"targets", "any"},
+	{"destination", "any"},
+	{"targetDetails", "choice:ship,pad"}
+})
+
+mfchat.addCommand("(%w+) (%w+) (up)", transportTargets, {
+	{"action", "choice:transport,beam,send,take,scoop"},
+	{"targets", "any"},
+	{"destination", "any"},
+})
