@@ -567,6 +567,49 @@ local function crapgardTransport(transporter, targets, destination, mode, callba
 		callback(false, "not enough pads")
 		return
 	end
+
+	local wirelink = transporter:getWirelink()
+
+	if IsValid(targets[1]) then
+		if stargate.locationJammed(targets[1]:pos()) then
+			callback(false, "target jammed")
+			return
+		end
+
+		wirelink["Origin"] = targets[1]:pos()
+	elseif mode ~= beamMode.BEAM_FROM_PADS then
+		callback(false, "invalid target")
+		return
+	end
+
+	if mode == beamMode.BEAM_TO_PADS then
+		local ent = transporter:getEntity()
+		wirelink["Dest"] = ent:toWorld(padOffset[ent:model()])
+		wirelink["Send"] = 1
+	else
+		wirelink["Dest"] = destination
+
+		if mode == beamMode.BEAM_FROM_PADS then
+			local ent = transporter:getEntity()
+			wirelink["Origin"] = ent:toWorld(padOffset[ent:model()])
+			wirelink["Radius"] = 75
+		end
+
+		wirelink["Send"] = 1
+	end
+
+	callback(true)
+
+	--Reset
+	timer.simple(1, function()
+		wirelink["Send"]					= 0
+		wirelink["Radius"]					= 0
+		wirelink["Retrieve"]				= 0
+		wirelink["Transport Everything"]	= 0
+
+		wirelink["Origin"]	= Vector()
+		wirelink["Dest"]	= Vector()
+	end)
 end
 
 local function asgardTransport(transporter, targets, destination, mode, callback)
@@ -577,6 +620,50 @@ local function asgardTransport(transporter, targets, destination, mode, callback
 		callback(false, "not enough pads")
 		return
 	end
+
+	local wirelink = transporter:getWirelink()
+
+	if IsValid(targets[1]) then
+		if stargate.locationJammed(targets[1]:pos()) then
+			callback(false, "target jammed")
+			return
+		end
+
+		wirelink["Target"] = targets[1]
+	elseif mode ~= beamMode.BEAM_FROM_PADS then
+		callback(false, "invalid target")
+		return
+	end
+
+	if mode == beamMode.BEAM_TO_PADS then
+		local ent = transporter:getEntity()
+		wirelink["Origin"] = ent:toWorld(padOffset[ent:model()])
+		wirelink["Retrieve"] = 1
+	else
+		wirelink["Destination"] = destination
+
+		if mode == beamMode.BEAM_FROM_PADS then
+			local ent = transporter:getEntity()
+			wirelink["Origin"] = ent:toWorld(padOffset[ent:model()])
+			wirelink["Radius"] = 75
+		end
+
+		wirelink["Send"] = 1
+	end
+
+	callback(true)
+
+	--Reset
+	timer.simple(1, function()
+		wirelink["Send"]					= 0
+		wirelink["Radius"]					= 0
+		wirelink["Retrieve"]				= 0
+		wirelink["Transport Everything"]	= 0
+
+		wirelink["Origin"]		= Vector()
+		wirelink["Destination"]	= Vector()
+		wirelink["Target"]		= ents.NULL_ENTITY
+	end)
 end
 
 local function starTrekTransport(transporter, targets, destination, mode, callback)
@@ -596,11 +683,20 @@ local function starTrekTransport(transporter, targets, destination, mode, callba
 
 	for i = 1, #targets do
 		if IsValid(targets[i]) then
+			if stargate.locationJammed(targets[i]:pos()) then
+				callback(false, "target jammed")
+				return
+			end
+
 			wirelink["Target"..i] = targets[i]
 		end
 	end
 
-	if mode == beamMode.BEAM_TO_VECTOR then
+	if mode ~= beamMode.BEAM_TO_PADS then
+		if stargate.locationJammed(destination) then
+			callback(false, "destination jammed")
+			return
+		end
 		wirelink["TargetLocation"] = destination
 	end
 
@@ -662,7 +758,7 @@ local function transportTargets(player, data)
 			entity = player
 		elseif target == "this" then
 			entity = player:aimEntity()
-		elseif target == "pads" then
+		elseif target == "pads" or target == "pad" then
 			if #targetEntities > 0 then
 				mfchat.error(player, "Unable to energise both the pads and entities outside the pads.")
 				return
@@ -676,7 +772,7 @@ local function transportTargets(player, data)
 		if IsValid(entity) and not matchedEnts[entity] then
 			matchedEnts[entity] = true
 			targetEntities[#targetEntities+1] = entity
-		elseif not IsValid(entity) then
+		elseif not IsValid(entity) and not matchedEnts["pads"] then
 			mfchat.error(player, "Could not find anyone under the name '{s red}'.", target)
 			return
 		end
@@ -775,6 +871,8 @@ local function transportTargets(player, data)
 					printTable[#printTable+1] = "{en}"
 				end
 			end
+
+			if matchedEnts["pads"] then printTable = {"the pads"} end
 
 			local argTable = targetEntities
 			for i = 1, #destinationArgs do
