@@ -1,0 +1,286 @@
+--@name Luna Mainframe | Permission Management
+--@author The17thDoctor
+
+--[[
+	The permission systems, enables the mainframe to filter actions
+	depending on whitelist permissions.
+
+	It is recommend to keep those libraries getting loaded from shared in order to get updates.
+]]--
+
+if CLIENT then return end
+
+local checkType = libraries.checkType
+
+local mfperms = {}
+
+---WHITELIST & PERMISSIONS
+
+mainframe.whitelist		= {}
+mainframe.blacklist		= {}
+mainframe.permalist		= {}
+mainframe.permissions 	= {}
+
+local playerMeta = starfall.getTypeDef("Player")
+
+local function checkValidPlayer(player)
+	if not IsValid(player) or not player:isPlayer() then error("Invalid player entity", 2) end
+end
+
+--Returns whether a player is whitelisted, always returns true for the owner.
+function mfperms.isWhitelisted(player)
+	checkValidPlayer(player)
+	if player == ents.owner() then return true end
+	return mainframe.whitelist[player:steamID()] ~= nil
+end
+
+--Returns whether a player is blacklisted, always returns false for the owner.
+function mfperms.isBlacklisted(player)
+	checkValidPlayer(player)
+	if player == ents.owner() then return false end
+	return mainframe.blacklist[player:steamID()] ~= nil
+end
+
+--Returns whether a player is permalisted, always returns true for the owner.
+function mfperms.isPermalisted(player)
+	checkValidPlayer(player)
+	if player == ents.owner() then return true end
+	return mainframe.permalist[player:steamID()] ~= nil
+end
+
+function playerMeta:isWhitelisted()
+	return mainframe.isWhitelisted(self)
+end
+
+function playerMeta:isBlacklisted()
+	return mainframe.isBlacklisted(self)
+end
+
+function playerMeta:isPermalisted()
+	return mainframe.isPermalisted(self)
+end
+
+--Adds a player to the whitelist..
+function mfperms.addToWhitelist(player)
+	checkValidPlayer(player)
+	if player == ents.owner() then return false, "can't add the owner to the whitelist" end
+	if mainframe.isWhitelisted(player) then return false, "player already in the whitelist" end
+	if mainframe.isPermalisted(player) then return false, "player already in the permalist" end
+
+	mainframe.blacklist[player:steamID()] = nil
+	mainframe.whitelist[player:steamID()] = {
+		permissions = {},
+		added = os.time(),
+		username = player:name(),
+		rank = player:getUserGroup(),
+	}
+
+	return true
+end
+
+--Removes a player from the whitelist..
+function mfperms.removeFromWhitelist(player)
+	checkValidPlayer(player)
+	if player == ents.owner() then return false, "can't remove owner from the whitelist" end
+	if not mfperms.isWhitelisted(player) then return false, "player not in the whitelist" end
+
+	mainframe.whitelist[player:steamID()] = nil
+	return true
+end
+
+--Adds a player to the blacklist..
+function mfperms.addToBlacklist(player)
+	checkValidPlayer(player)
+	if player == ents.owner() then return false, "can't add the owner to the blacklist" end
+	if mfperms.isBlacklisted(player) then return false, "player already in the blacklist" end
+
+	mainframe.whitelist[player:steamID()] = nil
+	mainframe.permalist[player:steamID()] = nil
+	mainframe.blacklist[player:steamID()] = {
+		added = os.time(),
+		username = player:name(),
+		rank = player:getUserGroup()
+	}
+	mainframe.saveFile()
+	return true
+end
+
+--Removes a player from the blacklist..
+function mfperms.removeFromBlacklist(player)
+	checkValidPlayer(player)
+	if not mfperms.isBlacklisted(player) then return false, "player not in the blacklist" end
+
+	mainframe.blacklist[player:steamID()] = nil
+	mainframe.saveFile()
+	return true
+end
+
+--Adds a player to the permalist..
+function mfperms.addToPermalist(player)
+	checkValidPlayer(player)
+	if player == ents.owner() then return false, "can't add the owner to the permalist" end
+	if mfperms.isPermalisted(player) then return false, "player already in the permalist" end
+
+	mainframe.whitelist[player:steamID()] = nil
+	mainframe.blacklist[player:steamID()] = nil
+	mainframe.permalist[player:steamID()] = {
+		permissions = {},
+		added = os.time(),
+		username = player:name(),
+		rank = player:getUserGroup(),
+	}
+	mainframe.saveFile()
+	return true
+end
+
+function mfperms.getWhitelist()
+	local t = {}
+	for k, v in pairs(mainframe.whitelist) do
+		t[k] = v
+	end
+
+	return t
+end
+
+function mfperms.getBlacklist()
+	local t = {}
+	for k, v in pairs(mainframe.blacklist) do
+		t[k] = v
+	end
+
+	return t
+end
+
+function mfperms.getPermalist()
+	local t = {}
+	for k, v in pairs(mainframe.permalist) do
+		t[k] = v
+	end
+
+	return t
+end
+
+--Removes a player from the permalist..
+function mfperms.removeFromPermalist(player)
+	checkValidPlayer(player)
+	if player == ents.owner() then return false, "can't remove the owner from the permalist" end
+	if not mfperms.isPermalisted(player) then return false, "player not in the permalist" end
+
+	mainframe.permalist[player:steamID()] = {}
+	mainframe.saveFile()
+	return true
+end
+
+function playerMeta:addToWhitelist()
+	return mfperms.addToWhitelist(self)
+end
+
+function playerMeta:removeFromWhitelist()
+	return mfperms.removeFromWhitelist(self)
+end
+
+function playerMeta:addToBlacklist()
+	return mfperms.addToBlacklist(self)
+end
+
+function playerMeta:removeFromBlacklist()
+	return mfperms.removeFromBlacklist(self)
+end
+
+function playerMeta:addToPermalist()
+	return mfperms.addToPermalist(self)
+end
+
+function playerMeta:removeFromPermalist()
+	return mfperms.removeFromPermalist(self)
+end
+
+---PERMISSIONS
+
+mfperms.GRANTED = 0
+mfperms.DENIED = 1
+mfperms.PARENT = 2
+
+--Registers a new permission to the permission tree
+function mfperms.registerPermission(path, grantType)
+	checkType(path, "string", "path")
+	checkType(grantType, "number", "grantType")
+
+	if utf8.len(path) ~= string.len(path) then error("Permission path must be ASCII", 2) end
+	path = path:lower()
+
+	if mainframe.permissions[path] ~= nil then
+		return false, "permission already existing"
+	end
+
+	local nodes = path:explode(".")
+	local currentPermission = nodes[1]
+	for i = 1, #nodes-1 do
+		if mainframe.permissions[currentPermission] == nil then
+			error("Missing parent permission '"..currentPermission.."'", 2)
+		end
+
+		currentPermission = currentPermission.."."..nodes[i+1]
+	end
+
+	if grantType < 0 or grantType > 2 then
+		error("Unknown permission granting type.", 2)
+	end
+
+	if #nodes == 1 and grantType == mfperms.PARENT then
+		error("Current permission has no parent, granting type invalid.", 2)
+	end
+
+	mainframe.permissions[path] = grantType
+end
+
+--Returns the permissions granted to a specific player or false if he's part of the blacklist or not in any whitelist
+function mfperms.getPermissions(player)
+	checkValidPlayer(player)
+
+	if player == ents.owner() then
+		local permissionsTable = {}
+		for k in pairs(mainframe.permissions) do
+			permissionsTable[k] = true
+		end
+
+		return permissionsTable
+	end
+
+	if not mainframe.blacklist[player:steamID()] then
+		return mainframe.permalist[player:steamID()] or mainframe.whitelist[player:steamID()] or false
+	else
+		return false
+	end
+end
+
+function playerMeta:getPermissions()
+	return mfperms.getPermissions(self)
+end
+
+--Returns whether a player has been granted a specific permission
+function mfperms.isPermittedForPlayer(player, permission)
+	if mainframe.permissions[permission] == nil then error("Unknown permission '"..permission.."'", 1) end
+	checkValidPlayer(player)
+	if player == ents.owner() then return true end
+
+	local playerPermissions = mfperms.getPermissions(player)
+
+	if playerPermissions then
+		local existingPermission = playerPermissions[permission]
+
+		if existingPermission ~= nil then
+			return existingPerm
+		else
+			return mainframe.permissions[permission]
+		end
+	else
+		return false
+	end
+end
+
+function playerMeta:isPermitted(permission)
+	return mfperms.isPermittedForPlayer(self, permission)
+end
+
+libraries.addToEnvironment("mfperms", mfperms)

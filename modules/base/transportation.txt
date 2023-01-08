@@ -77,12 +77,12 @@ mainframe.addSetting("Favorite Drive", mainframe.SETTING_TYPE_WORD, "none", {
 	}
 })
 
-mainframe.registerPermission("warp", true)
-mainframe.registerPermission("warp.back", true)
-mainframe.registerPermission("warp.offset", true)
-mainframe.registerPermission("warp.location", true)
-mainframe.registerPermission("warp.toplayer", true)
-mainframe.registerPermission("warp.rotation", true)
+mfperms.registerPermission("warp", mfperms.GRANTED)
+mfperms.registerPermission("warp.back", mfperms.PARENT)
+mfperms.registerPermission("warp.offset", mfperms.PARENT)
+mfperms.registerPermission("warp.location", mfperms.PARENT)
+mfperms.registerPermission("warp.toplayer", mfperms.PARENT)
+mfperms.registerPermission("warp.rotation", mfperms.PARENT)
 
 --TSCM Drives
 Module("bsg_drive", {system = "FTL Drive", entity = "BSG Drive"}, true, false, nil, {warpDrive = true})
@@ -460,10 +460,10 @@ end
 
 ---Transporter
 
-mainframe.registerPermission("transporter", true)
-mainframe.registerPermission("transporter.topad", true)
-mainframe.registerPermission("transporter.toplayer", true)
-mainframe.registerPermission("transporter.tolocation", true)
+mfperms.registerPermission("transporter", mfperms.GRANTED)
+mfperms.registerPermission("transporter.topad", mfperms.PARENT)
+mfperms.registerPermission("transporter.toplayer", mfperms.PARENT)
+mfperms.registerPermission("transporter.tolocation", mfperms.PARENT)
 
 Module("transporter_pad", {system = "Transporter", entity = "Transporter Pad"}, true, false, nil, {transporter = true, type = "st"})
 Module("transporter", {system = "Transporter", entity = "Asgard Transporter"}, true, false, nil, {transporter = true, type = "asgard"})
@@ -474,6 +474,20 @@ local padCounts = {
 	["models/veegi/beampad/beampad.mdl"] 		= 1,
 	["models/slyfo_2/telepad_standalone.mdl"] 	= 6,
 	["models/slyfo_2/telepad_inhull.mdl"] 		= 6,
+}
+
+local transportActions = {
+	transport	= "Transporting",
+	beam		= "Beaming",
+	send		= "Sending",
+	take		= "Taking",
+	scoop		= "Scooping"
+}
+
+local beamMode = {
+	BEAM_TO_PADS = 1,
+	BEAM_FROM_PADS = 2,
+	BEAM_TO_VECTOR = 4,
 }
 
 local function crapgardTransport(transporter, targets, destination, mode, callback)
@@ -506,16 +520,53 @@ local function starTrekTransport(transporter, targets, destination, mode, callba
 	end
 
 	local wirelink = transporter:getWirelink()
+	if wirelink["Energising"] == 1 then
+		callback(false, "transporter energising")
+		return
+	end
 
 	for i = 1, #targets do
 		if IsValid(targets[i]) then
 			wirelink["Target"..i] = targets[i]
 		end
 	end
+
+	if mode == beamMode.BEAM_TO_PADS then
+
+	end
+
+	wirelink["Beam to pads"]	= bit.band(mode, beamMode.BEAM_TO_PADS)
+	wirelink["Beam from pads"]	= bit.band(mode, beamMode.BEAM_FROM_PADS)
+	wirelink["Beam to vector"]	= bit.band(mode, beamMode.BEAM_TO_VECTOR)
+
+	if mode == beamMode.BEAM_TO_PADS or mode == beamMode.BEAM_FROM_PADS then
+		wirelink["Energise pad"] = 1
+		callback(true)
+	end
+
+	--Reset
+	timer.simple(1, function()
+		wirelink["Beam to pads"]	= 0
+		wirelink["Beam from pads"]	= 0
+		wirelink["Beam to vector"]	= 0
+		wirelink["Energise pad"]	= 0
+		wirelink["Keep formation"]	= 0
+		wirelink["TargetLocation"]	= Vector()
+		wirelink["Target Pad"]		= ents.NULL_ENTITY
+
+		for i = 1, 6 do
+			wirelink["Target"..i] = ents.NULL_ENTITY
+		end
+	end)
 end
 
 local function transportTargets(player, data)
+	local ply = find.playerByName(data.targets)
 
+	if data.destination == "up" then
+		local tp = mfwire.getModuleByClass("transporter_pad")
+		starTrekTransport(tp, {ply}, nil, beamMode.BEAM_TO_PADS, print)
+	end
 end
 
 mfchat.addCommand("(%w+) (%w+) to (%w+)", transportTargets, {

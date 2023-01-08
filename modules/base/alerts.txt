@@ -1,0 +1,200 @@
+--@name Luna Mainframe | Module | Alert System
+--@author The17thDoctor
+
+if CLIENT then return end
+
+mfperms.registerPermission("alerts", mfperms.GRANTED)
+mfperms.registerPermission("alerts.change", mfperms.PARENT)
+mfperms.registerPermission("alerts.reset", mfperms.PARENT)
+
+local pathModV2 = "models/modbridge_v2/corridors/*"
+local pathMod = "models/cerus/modbridge/core/*"
+local path4D = "models/4dpack/corridors/*"
+
+local knownModels = {} --Stores the submaterial IDs, allows for faster processing after the first alert.
+
+local corridor = {}
+corridor.TYPE_MODBRIDGE = 1
+corridor.TYPE_4D = 2
+corridor.TYPE_MODBRIDGE_V2 = 3
+
+local alerts = {}
+
+alerts.green = {
+	message = "Disabling alert status.",
+	material = "cmats/light"
+}
+
+alerts.yellow = {
+	message = "Yellow alert engaged.",
+	material = "glow/yellow_light",
+	sound = "st/shuttlecraft/yellowalert.wav",
+	soundLength = 0.879,
+}
+
+local redAlertSound = {
+	defiant = "st/misc/defiant_redalert.wav",
+	voy = "st/misc/voy_redalert_loop.wav",
+	ente = "st/misc/ent_e_redalert.wav",
+	tng = "st/misc/tng_redalert.wav",
+	rom = "st/misc/rom_redalert.wav",
+}
+
+alerts.red = {
+	message = "Red alert engaged.",
+	material = "cmats/flash_red",
+	sound = redAlertSound[luna.redAlertSound:lower()] or "st/misc/tng_redalert.wav",
+	soundLength = 10
+}
+
+alerts.blue = {
+	message = "Blue alert engaged.",
+	material = "glow/flash_blue",
+	sound = "st/misc/bluealert.wav",
+	soundLength = 10
+}
+
+alerts.black = {
+	message = "Black alert engaged.",
+	material = "glow/flash_white",
+	color = Color(72, 25, 79),
+	sound = "st/misc/dsc_black_alert_short.wav",
+	soundLength = 10
+}
+
+alerts.intruder = {
+	message = "Intruder alert engaged.",
+	material = "glow/flash_white",
+	sound = "st/misc/intruder_alert.wav",
+	soundLength = 10
+}
+
+local function findID(entity, type)
+	if knownModels[entity:model()] ~= nil then
+		return knownModels[entity:model()]
+	else
+		local id = -1
+		local materials = entity:getMaterials()
+
+		if type == corridor.TYPE_MODBRIDGE then
+			for i = 1, #materials do
+				local mat = materials[i]
+				if mat == "cmats/light" then
+					id = i-1
+					break
+				end
+			end
+		elseif type == corridor.TYPE_4D then
+			for i = 1, #materials do
+				local mat = materials[i]
+				if mat == "anoanddoc/light" then
+					id = i-1
+					break
+				end
+			end
+		else
+			for i = 1, #materials do
+				local mat = materials[i]
+				if mat == "the17thdoctor/corridors/alert_light" then
+					id = i-1
+					break
+				end
+			end
+		end
+
+		knownModels[entity:model()] = id
+	end
+end
+
+local colorNeutral = false --Was the previous alert not using submaterial color ?
+
+local function corridorFinder(entity)
+	return entity:getCore() == ents.self():getCore() and entity:owner() == ents.owner()
+end
+
+
+--TODO: Figure out how to properly change alert sound.
+local function changeAlert(player, data)
+	local alertName = data.alert
+
+	if alertName == "green" then
+		if not player:isPermitted("alerts.reset") and not player:isPermitted("alerts.change") then
+			mfchat.error(player, "{P You} are not allowed to change alert settings.", player)
+			return
+		end
+	elseif not player:isPermitted("alerts.change") then
+		mfchat.error(player, "{P You} are not allowed to change alert settings.", player)
+		return
+	end
+
+	local shipCore = ents.self():getCore()
+	if not IsValid(shipCore) then
+		mfchat.error(player, "Ship Core not found.")
+		return
+	end
+
+	local alertData = alerts[alertName]
+
+	local corridorTable = {
+		find.byModel(pathMod, corridorFinder),
+		find.byModel(path4D, corridorFinder),
+		find.byModel(pathModV2, corridorFinder),
+	}
+
+	if alertData.color ~= nil then
+		colorNeutral = false
+	end
+
+	local i = 1
+	local a = 1
+	local currentTable = corridorTable[1]
+
+	timer.create("Change Corridors", 0, 0, function()
+		if i >= #currentTable then
+			i = 1
+			a = a + 1
+
+			if a == 4 then
+				timer.remove("Change Corridors")
+				return
+			end
+
+			currentTable = corridorTable[a]
+			goto skip
+		end
+
+		local submatID = findID(currentTable[i], a)
+		if submatID == nil then goto skip end
+
+		currentTable[i]:setSubMaterial(submatID, alertData.material)
+		if not colorNeutral then
+			currentTable[i]:setSubMaterialColor(submatID, alertData.color or Color(255, 255, 255))
+		end
+
+		i = i + 1
+		::skip::
+	end)
+
+	if alertData.color == nil then
+		colorNeutral = true
+	end
+
+	---Sounds
+	if alertData.sound ~= nil then
+		shipCore:setEnvironmentSound(alertData.sound)
+		if timer.exists("Alert Timer") then timer.remove("Alert Timer") end
+
+		timer.create("Alert Timer", alertData.soundLength, 1, function()
+			shipCore:stopEnvironmentSound()
+		end)
+	else
+		shipCore:stopEnvironmentSound()
+	end
+
+	mfchat.say(player, alertData.message)
+
+	if alertData.action ~= nil then alertData.action() end
+end
+
+mfchat.addCommand("engage (%w+) alert", changeAlert, {{"alert", "choice:green,yellow,red,blue,black,intruder"}})
+mfchat.addCommand("(%w+) alert", changeAlert, {{"alert", "choice:green,yellow,red,blue,black,intruder"}})

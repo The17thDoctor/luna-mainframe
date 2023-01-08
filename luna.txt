@@ -17,8 +17,12 @@
 luna.shouldGreet = false --Should luna greet you on startup ?
 luna.shouldGreetMainframes = false --Should luna greet other mainframes ?
 
+luna.redAlertSound = "TNG" --What red alert sound should luna use ?
+--Options : TNG ; VOY ; ROM ; DEFIANT ; ENTE
+
 --Luna's Base Libraries
 bootstrapper.addLibrary("essentials")
+bootstrapper.addLibrary("permissions")
 bootstrapper.addLibrary("networking")
 bootstrapper.addLibrary("rendering")
 bootstrapper.addLibrary("wirelink")
@@ -35,7 +39,9 @@ bootstrapper.addLibrary("environment")
 bootstrapper.setPriority("base/setup", 2^1024)
 bootstrapper.setPriority("base/permissions", 2^1023)
 bootstrapper.setPriority("base/systems", 2^1022)
-
+bootstrapper.setPriority("base/transportation", 2^1021)
+bootstrapper.setPriority("base/alerts", 2^1020)
+bootstrapper.setPriority("base/miscellaneous", 2^1000)
 ---Custom Modules
 
 

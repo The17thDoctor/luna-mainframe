@@ -3,11 +3,11 @@
 
 if CLIENT then return end
 
-mainframe.registerPermission("module", true)
-mainframe.registerPermission("module.toggle", true)
-mainframe.registerPermission("selfdestruct", false)
-mainframe.registerPermission("selfdestruct.engage", false)
-mainframe.registerPermission("selfDestruct.abort", false)
+mfperms.registerPermission("module", mfperms.GRANTED)
+mfperms.registerPermission("module.toggle", mfperms.PARENT)
+mfperms.registerPermission("selfdestruct", mfperms.DENIED)
+mfperms.registerPermission("selfdestruct.engage", mfperms.PARENT)
+mfperms.registerPermission("selfDestruct.abort", mfperms.PARENT)
 
 ---Module Toggling
 
@@ -199,6 +199,7 @@ Module("ship_core", {entity = "Ship Core", system = "Plating Emitters"}, true, t
 Module("st_shield_emitter", {entity = "Starship Shield", system = "Shield Array"}, true, true, shieldToggler)
 Module("atlantis_shield_emitter", {entity = "Atlantis Shield", system = "Shield Array"}, true, true, shieldToggler)
 Module("st_cloaking_device", {entity = "Cloaking Device", system = "Cloaking Emitters"}, true, true, standardToggler)
+Module("computer_core", {entity = "Computer Core", system = "Computer Core"}, true, false)
 
 ---Stargazer Modules
 Module("stargazer_node", {entity = "Resource Node", system = "Resource Node"}, true, false)
@@ -311,7 +312,7 @@ local function selfDestruct(player, data)
 	if engage then
 		local length = data.length
 		if length ~= math.clamp(length, 0, 300) then
-			mfchat.error(player, "The self-destruction delay must be within 0 second and 5 minutes.", 0, 300)
+			mfchat.error(player, "The self-destruction delay must be within {dT} and {dT}.", 0, 300)
 			return
 		elseif timer.exists("self-destruction") then
 			mfchat.error(player, "Self-destruction already on the way.")
@@ -319,7 +320,7 @@ local function selfDestruct(player, data)
 		end
 
 		local i = 0
-		timer.create("self-destruction", 1, length, function()
+		timer.create("self-destruction", length, 1, function()
 			i = i + 1
 
 			if not IsValid(shipCore) then
@@ -328,13 +329,13 @@ local function selfDestruct(player, data)
 				return
 			end
 
-			if i == length then
+			if i >= length then
 				shipCore:getEntity():selfDestruct()
 				mfchat.say(player, "Self-destructing the ship.")
 			end
 		end)
 
-		mfchat.warn(player, "Self-destruction engaged, destroying the ship in {d 2 T}.", length)
+		mfchat.warn(player, "Self-destruction engaged, destroying the ship in {dT}.", length)
 		if player ~= ents.owner() then
 			mfchat.warn(ents.owner(), "{P} has engaged self-destruction.", player)
 		end

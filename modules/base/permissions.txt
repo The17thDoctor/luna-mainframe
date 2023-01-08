@@ -3,22 +3,21 @@
 
 if CLIENT then return end
 
-mainframe.registerPermission("permissions", false)
-mainframe.registerPermission("permissions.edit", false)
-mainframe.registerPermission("permissions.list", false)
+mfperms.registerPermission("permissions", mfperms.DENIED)
+mfperms.registerPermission("permissions.edit", mfperms.DENIED)
+mfperms.registerPermission("permissions.list", mfperms.PARENT)
 
-mainframe.registerPermission("permissions.whitelist", false)
-mainframe.registerPermission("permissions.whitelist.edit", false)
-mainframe.registerPermission("permissions.whitelist.list", false)
+mfperms.registerPermission("permissions.whitelist", mfperms.DENIED)
+mfperms.registerPermission("permissions.whitelist.edit", mfperms.DENIED)
+mfperms.registerPermission("permissions.whitelist.list", mfperms.PARENT)
 
-mainframe.registerPermission("permissions.blacklist", false)
-mainframe.registerPermission("permissions.blacklist.edit", false)
-mainframe.registerPermission("permissions.blacklist.list", false)
+mfperms.registerPermission("permissions.blacklist", mfperms.DENIED)
+mfperms.registerPermission("permissions.blacklist.edit", mfperms.DENIED)
+mfperms.registerPermission("permissions.blacklist.list", mfperms.PARENT)
 
-mainframe.registerPermission("permissions.permalist", false)
-mainframe.registerPermission("permissions.permalist.edit", false)
-mainframe.registerPermission("permissions.permalist.list", false)
-
+mfperms.registerPermission("permissions.permalist", mfperms.DENIED)
+mfperms.registerPermission("permissions.permalist.edit", mfperms.DENIED)
+mfperms.registerPermission("permissions.permalist.list", mfperms.PARENT)
 
 ---Whitelist
 

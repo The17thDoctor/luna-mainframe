@@ -1,0 +1,107 @@
+--@name Luna Mainframe | Module | Tactical Controls
+--@author The17thDoctor
+
+if CLIENT then return end
+
+local target = nil
+
+function parseTargeting(player, data)
+	print(data.target, data.owner)
+end
+
+mfchat.addCommand("target (%w+)", parseTargeting, {{"target", "any"}})
+mfchat.addCommand("target (%w+)'?s? (%w+)", parseTargeting, {{"owner", "player"}, {"target", "any"}})
+
+function checkCombatReady(player)
+
+	local info = "ⓘ"
+	local warn = "‼"
+	local error = "✕"
+	local check = "✓"
+
+	local shipCore = mfwire.getModuleByClass("ship_core")
+	if not IsValid(shipCore) then
+		mfchat.error(player, "{s blue} not found.", shipCore:entityName())
+		return
+	else
+		local wirelink = shipCore:getWirelink()
+
+		if wirelink["Health"] < wirelink["Max Health"] then
+			local hull = wirelink["Health"] / wirelink["Max Health"]
+			mfchat.warn(player, "{s yellow} Hull at {dp 2}.", warn, hull)
+		else
+			mfchat.say(player, "{s green} Optimal hull integrity.", check)
+		end
+
+		if wirelink["Plating Enabled"] == 1 then
+			if wirelink["Plating"] < 100 then
+				mfchat.warn(player, "{s yellow} {s} charged at {d 2}%.", warn, shipCore:systemName(), wirelink["Plating"])
+			else
+				mfchat.say(player, "{s green} {s} fully charged.", check, shipCore:systemName())
+			end
+		else
+			mfchat.error(player, "{s red} {s} offline.", error, shipCore:systemName())
+		end
+	end
+
+	local atlShield = mfwire.getModuleByClass("atlantis_shield_emitter")
+	local stShield = mfwire.getModuleByClass("st_shield_emitter")
+	local shield
+
+	if IsValid(atlShield) then
+		shield = atlShield
+	elseif IsValid(stShield) then
+		shield = stShield
+	end
+
+	if IsValid(shield) then
+		local wirelink = shield:getWirelink()
+		local entity = shield:getEntity()
+
+		if wirelink["Active"] == 1 then
+			if entity:getTotalCharge() < entity:getMaxCharge() then
+				local charge = entity:getTotalCharge() / entity:getMaxCharge()
+				mfchat.warn(player, "{s yellow} shield charged at {dp 2}.", warn, charge)
+			else
+				mfchat.say(player, "{s green} Shields up", check)
+			end
+		else
+			mfchat.error(player, "{s red} Shields down.", error)
+		end
+	else
+		mfchat.error(player, "{s red} Shield not found.", error)
+	end
+
+	local computerCore = mfwire.getModuleByClass("computer_core")
+	if not IsValid(computerCore) then
+		mfchat.say(player, "{s blue} {s} not found.", info, computerCore:entityName())
+	else
+		mfchat.say(player, "{s green} {s} found.", check, computerCore:entityName())
+	end
+
+	if ents.owner():hasDamageEnabled() then
+		mfchat.say(player, "{s check} Ship damage enabled.", check, ents.owner())
+	else
+		if player == ents.owner() then
+			mfchat.error(player, "{s red} {P You} do not have ship damage enabled.", error, ents.owner())
+		else
+			mfchat.error(player, "{s red} {P} does not have ship damage enabled.", error, ents.owner())
+		end
+	end
+
+	if IsValid(target) and IsValid(target:owner()) then
+		if target:owner():hasDamageEnabled() then
+			mfchat.say(player, "{s green} {P} has damage enabled.", check, target:owner())
+		else
+			mfchat.error(player, "{s red} {P} has damage disabled.", error, target:owner())
+		end
+	end
+
+	if IsValid(target) then
+		mfchat.say(player, "{s blue} Targeting {blue}{en}{white}.", info, target)
+	else
+		mfchat.say(player, "{s yellow} No target has been set.", warn)
+	end
+end
+
+mfchat.addCommand("check combat readiness", checkCombatReady)

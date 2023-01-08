@@ -7,6 +7,10 @@
 	the mainframe from crashing entirely.
 ]]--
 
+--Stores all of the environment tables for all modules.
+local moduleEnvironments = {}
+local addedGlobals = {}
+
 local standardStarfallLibraries = {
 	"_G",
 	"base64",
@@ -145,6 +149,10 @@ function getModuleEnvironment(modulePath)
 	environment._G.NOTIFY_HINT = NOTIFY_HINT
 	environment._G.NOTIFY_GENERIC = NOTIFY_GENERIC
 	environment._G.NOTIFY_ERROR = NOTIFY_ERROR
+
+	for name, value in pairs(addedGlobals) do
+		environment._G[name] = value
+	end
 
 	environment.luna = luna
 
@@ -334,6 +342,25 @@ function getModuleEnvironment(modulePath)
 		end
 	end
 
+
+	---ENVIRONMENT CONTROL
+
+	environment.environment = {}
+
+	function environment.environment.addGlobal(var, varName)
+		checkType(varName, "string", "varName")
+		addedGlobals[varName] = var
+	end
+
+	function environment.environment.getModuleGlobal(path, name)
+		if moduleEnvironments[path:lower()] ~= nil then
+			return moduleEnvironments[path:lower()][name] or nil
+		else
+			return nil
+		end
+	end
+
+
 	if SERVER then
 		---CHAT
 		environment.chat = {}
@@ -513,5 +540,10 @@ function getModuleEnvironment(modulePath)
 		end
 	end
 
-	return setmetatable(localEnvironment, environment)
+	local strippedPath = modulePath:explode("luna/modules/")[2]:lower()
+
+	local finalEnvironment = setmetatable(localEnvironment, environment)
+	moduleEnvironments[strippedPath] = finalEnvironment
+
+	return finalEnvironment
 end

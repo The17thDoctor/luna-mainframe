@@ -8,7 +8,7 @@ if SERVER then
 	mainframe.addSetting("Command Prefix", mainframe.SETTING_TYPE_WORD, "luna", {length = 20})
 
 	--Permissions
-	mainframe.registerPermission("commands", true)
+	mfperms.registerPermission("commands", mfperms.GRANTED)
 
 	---Chat Control
 
@@ -62,7 +62,7 @@ if SERVER then
 		chat.stop(chatListener)
 	end
 
-	mainframe.addToGlobalEnvironment(removeChatListener, "removeChatListener")
+	environment.addGlobal(removeChatListener, "removeChatListener")
 
 
 	---Base Commands

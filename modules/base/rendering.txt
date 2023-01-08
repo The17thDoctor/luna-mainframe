@@ -1,0 +1,12 @@
+--@name
+--@author
+
+if SERVER or render.isEmitter() then return end
+
+local font = render.createFont("Bahnschrift", 250)
+
+hook("render", "OwO", function()
+	render.clear()
+	render.setColor(Color.fromHSV(time.curTime(), 1, 1))
+	render.drawText(font, 512, 362, "Luna :)", render.TEXT_ALIGN_CENTER)
+end)

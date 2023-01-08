@@ -1,0 +1,35 @@
+--@name Personal Collection | Annihilator Control Module
+--@author
+
+--Time to start destroying a few world.
+
+if CLIENT then return end
+
+wire.createInputs({"Annihilator"}, {"Wirelink"}, {"Oh yeah baby"})
+
+local function fireAnnihilator(player)
+	if player ~= ents.owner() then
+		mfchat.error(player, "You think you can control that ?")
+		return
+	elseif not IsValid(wire.ports.Annihilator) then
+		mfchat.error(player, "Annihilator not wired.")
+		return
+	elseif wire.ports.Annihilator.Active == 1 then
+		if wire.ports.Annihilator.Firing == 1 then
+			mfchat.error(player, "Annihilator currently firing.")
+		else
+			mfchat.error(player, "Annihilator currently cooling down.")
+		end
+
+		return
+	end
+
+	wire.ports.Annihilator.Fire = 1
+	timer.simple(1, function()
+		wire.ports.Annihilator.Fire = 0
+	end)
+
+	mfchat.warn(player, "{s color} engaged, brace for impact.", "Annihilator MkI", Color(255, 125, 125))
+end
+
+mfchat.addCommand("fire annihilator", fireAnnihilator)
