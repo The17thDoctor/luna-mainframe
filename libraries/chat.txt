@@ -545,10 +545,10 @@ local function startQueueEmptying()
 	timer.create("Queue Emptying", 0.25, 0, function()
 		local nextTell = tellingQueue[1]
 
-		if IsValid(nextTell[2]) and chat.canTell(nextTell[2]) then
-			nextTell[1](nextTell[2], unpack(nextTell[3]))
+		if IsValid(nextTell[1]) and chat.canTell(nextTell[1]) then
+			chat.tell(unpack(nextTell))
 			table.remove(tellingQueue, 1)
-		elseif not IsValid(nextTell[2]) then
+		elseif not IsValid(nextTell[1]) then
 			table.remove(tellingQueue, 1)
 		end
 
@@ -580,7 +580,7 @@ function mfchat.say(player, message, ...)
 		if chat.canTell(player) then
 			chat.tell(unpack(messageTable))
 		else
-			tellingQueue[#tellingQueue+1] = {mfchat.say, player, messageTable}
+			tellingQueue[#tellingQueue+1] = messageTable
 			startQueueEmptying()
 		end
 	end
@@ -608,7 +608,7 @@ function mfchat.warn(player, message, ...)
 		if chat.canTell(player) then
 			chat.tell(unpack(messageTable))
 		else
-			tellingQueue[#tellingQueue+1] = {mfchat.warn, player, messageTable}
+			tellingQueue[#tellingQueue+1] = messageTable
 			startQueueEmptying()
 		end
 	end
@@ -636,7 +636,7 @@ function mfchat.error(player, message, ...)
 		if chat.canTell(player) then
 			chat.tell(unpack(messageTable))
 		else
-			tellingQueue[#tellingQueue+1] = {mfchat.error, player, messageTable}
+			tellingQueue[#tellingQueue+1] = messageTable
 			startQueueEmptying()
 		end
 	end

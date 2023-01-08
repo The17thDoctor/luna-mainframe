@@ -460,6 +460,15 @@ end
 
 ---Transporter
 
+mainframe.addSetting("Favorite Transporter", mainframe.SETTING_TYPE_WORD, "none", {
+	choices = {
+		none 				= true,
+		transporter_pad 	= true,
+		transporter 		= true,
+		asgard_transporter 	= true,
+	}
+})
+
 mfperms.registerPermission("transporter", mfperms.GRANTED)
 mfperms.registerPermission("transporter.topad", mfperms.PARENT)
 mfperms.registerPermission("transporter.toplayer", mfperms.PARENT)
@@ -476,6 +485,14 @@ local padCounts = {
 	["models/slyfo_2/telepad_inhull.mdl"] 		= 6,
 }
 
+local padOffset = {
+	["models/veegi/beampad/beampad_2p.mdl"] 	= Vector(0, 0, 1.3),
+	["models/veegi/beampad/beampad.mdl"] 		= Vector(0, 0, 0.3),
+	["models/slyfo_2/telepad_standalone.mdl"] 	= Vector(0, 0, 5.9),
+	["models/slyfo_2/telepad_inhull.mdl"] 		= Vector(0, -124, -108.6),
+	["models/boba_fett/props/asgard_console/asgard_console.mdl"] = Vector(40, 0, 0)
+}
+
 local transportActions = {
 	transport	= "Transporting",
 	beam		= "Beaming",
@@ -489,6 +506,58 @@ local beamMode = {
 	BEAM_FROM_PADS = 2,
 	BEAM_TO_VECTOR = 4,
 }
+
+local function getTransporter(player)
+	if player == nil then
+		local favoriteTransporter = mainframe.getSetting("Favorite Transporter").value
+		local transporter
+
+		if favoriteTransporter ~= "none" then
+			transporter = mfwire.getModuleByClass(favoriteTransporter)
+		end
+
+		if IsValid(transporter) then
+			return transporter
+		end
+
+		transporter = mfwire.getModuleByClass("transporter_pad")
+		if IsValid(transporter) then
+			return transporter
+		end
+
+		transporter = mfwire.getModuleByClass("asgard_transporter")
+		if IsValid(transporter) then
+			return transporter
+		end
+
+		transporter = mfwire.getModuleByClass("transporter")
+		if IsValid(transporter) then
+			return transporter
+		end
+
+		return nil
+	else
+		local st = find.byClass("transporter_pad", function(ent)
+			return ent:owner() == player
+		end)[1]
+
+		if IsValid(st) then return st end
+
+		local asgard = find.byClass("asgard_transporter", function(ent)
+			return ent:owner() == player
+		end)[1]
+
+		if IsValid(st) then return asgard end
+
+		local crapgard = find.byClass("transporter", function(ent)
+			return ent:owner() == player
+		end)[1]
+
+		if IsValid(st) then return crapgard end
+
+		return nil
+	end
+end
 
 local function crapgardTransport(transporter, targets, destination, mode, callback)
 	if not IsValid(transporter) then
@@ -531,8 +600,8 @@ local function starTrekTransport(transporter, targets, destination, mode, callba
 		end
 	end
 
-	if mode == beamMode.BEAM_TO_PADS then
-
+	if mode == beamMode.BEAM_TO_VECTOR then
+		wirelink["TargetLocation"] = destination
 	end
 
 	wirelink["Beam to pads"]	= bit.band(mode, beamMode.BEAM_TO_PADS)
@@ -541,8 +610,9 @@ local function starTrekTransport(transporter, targets, destination, mode, callba
 
 	if mode == beamMode.BEAM_TO_PADS or mode == beamMode.BEAM_FROM_PADS then
 		wirelink["Energise pad"] = 1
-		callback(true)
 	end
+
+	callback(true)
 
 	--Reset
 	timer.simple(1, function()
@@ -560,30 +630,239 @@ local function starTrekTransport(transporter, targets, destination, mode, callba
 	end)
 end
 
-local function transportTargets(player, data)
-	local ply = find.playerByName(data.targets)
-
-	if data.destination == "up" then
-		local tp = mfwire.getModuleByClass("transporter_pad")
-		starTrekTransport(tp, {ply}, nil, beamMode.BEAM_TO_PADS, print)
+local function chooseTransport(transporter)
+	if transporter:class() == "transporter_pad" then
+		return starTrekTransport
+	elseif transporter:class() == "asgard_transporter" then
+		return asgardTransport
+	elseif transporter:class() == "transporter" then
+		return crapgardTransport
+	else
+		error("Invalid transporter class : " .. transporter:class(), 1)
 	end
+end
+
+local function transportTargets(player, data)
+
+	---Target
+	local matchedEnts = {}
+	local targetEntities = {}
+	local targets = data.targets:explode("[%s,]+", true)
+
+	for i = 1, #targets do
+		local target = targets[i]:lower()
+		local entity
+
+		if target ~= "pads" and matchedEnts["pads"] then
+			mfchat.error(player, "Unable to energise both the pads and entities outside the pads.")
+			return
+		end
+
+		if target == "me" then
+			entity = player
+		elseif target == "this" then
+			entity = player:aimEntity()
+		elseif target == "pads" then
+			if #targetEntities > 0 then
+				mfchat.error(player, "Unable to energise both the pads and entities outside the pads.")
+				return
+			end
+
+			matchedEnts["pads"] = true
+		else
+			entity = find.playerByName(target)
+		end
+
+		if IsValid(entity) and not matchedEnts[entity] then
+			matchedEnts[entity] = true
+			targetEntities[#targetEntities+1] = entity
+		elseif not IsValid(entity) then
+			mfchat.error(player, "Could not find anyone under the name '{s red}'.", target)
+			return
+		end
+	end
+
+	---Destination
+	local mode = beamMode.BEAM_TO_VECTOR
+	local destination, destinationName, destinationArgs
+
+	if matchedEnts["pads"] then
+		mode = beamMode.BEAM_FROM_PADS
+	end
+
+	if data.targetDetails ~= nil then
+		if data.targetDetails == "ship" or data.targetDetails == "pad" then
+			local owner = find.playerByName(data.destination)
+
+			if not IsValid(owner) then
+				mfchat.error("Unable to find someone named '{s red}'.", data.destination)
+				return
+			end
+
+			local targetTransporter = getTransporter(owner)
+			if not IsValid(targetTransporter) then
+				mfchat.error(player, "Could not find any transporter owned by {P}.", owner)
+				return
+			end
+
+			destination = targetTransporter:pos() + padOffset[targetTransporter:model()] or targetTransporter:pos()
+			destinationName = "{P}'s {s}"
+			destinationArgs = {owner, data.targetDetails}
+		else
+			mfchat.error("Invalid choice, valid choices are: ship, pad.")
+			return
+		end
+	else
+		if data.destination == "pad" or data.destination == "pads" then
+			mode = beamMode.BEAM_TO_PADS
+			destinationName = "the {s}"
+			destinationArgs = {data.destination}
+		elseif data.destination == "me" then
+			destination = player:pos() + Vector(100)
+			destinationName = "{P you}"
+			destinationArgs = {player}
+		elseif IsValid(find.playerByName(data.destination)) then
+			local ply = find.playerByName(data.destination)
+			destination = ply:pos() + Vector(100)
+			destinationName = "{P}"
+			destinationArgs = {ply}
+		else
+			local found = false
+			for name, pos in pairs(transLocations.custom) do
+				if string.find(name:lower(), data.destination) ~= nil then
+					found = true
+					destination = pos
+					destinationName = "{s blue}"
+					destinationArgs = {name}
+				end
+			end
+
+			for name, pos in pairs(transLocations.default) do
+				if string.find(name:lower(), data.destination) ~= nil then
+					found = true
+					destination = pos
+					destinationName = "{s blue}"
+					destinationArgs = {name}
+				end
+			end
+
+			if not found then
+				mfchat.error(player, "Location not found.")
+				return
+			end
+		end
+	end
+
+	---Transportation
+	local transporter = getTransporter()
+	if not IsValid(transporter) then
+		mfchat.error(player, "{s blue} not found.", "Transporter pad")
+		return
+	end
+
+	local transportFunction = chooseTransport(transporter)
+	transportFunction(transporter, targetEntities, destination, mode, function(success, reason)
+		if success then
+			local printTable = {}
+			for i = 1, #targetEntities do
+				if targetEntities[i]:isPlayer() then
+					if targetEntities[i] == player then
+						printTable[#printTable+1] = "{P you}"
+					else
+						printTable[#printTable+1] = "{P}"
+					end
+				else
+					printTable[#printTable+1] = "{en}"
+				end
+			end
+
+			local argTable = targetEntities
+			for i = 1, #destinationArgs do
+				argTable[#argTable+1] = destinationArgs[i]
+			end
+
+			local feedback = transportActions[data.action].." "..table.concat(printTable, ", ").." to "..destinationName.."."
+			mfchat.say(player, feedback, unpack(argTable))
+		else
+			mfchat.error(player, "Unable to comply, {s}.", reason)
+		end
+	end)
+end
+
+local function transportUp(player, data)
+
+	---Target
+	local matchedEnts = {}
+	local targetEntities = {}
+	local targets = data.targets:explode("[%s,]+", true)
+
+	for i = 1, #targets do
+		local target = targets[i]:lower()
+		local entity
+
+		if target == "me" then
+			entity = player
+		elseif target == "this" then
+			entity = player:aimEntity()
+		else
+			entity = find.playerByName(target)
+		end
+
+		if IsValid(entity) and not matchedEnts[entity] then
+			matchedEnts[entity] = true
+			targetEntities[#targetEntities+1] = entity
+		elseif not IsValid(entity) then
+			mfchat.error(player, "Could not find anyone under the name '{s red}'.", target)
+			return
+		end
+	end
+
+	---Transportation
+	local transporter = getTransporter()
+	if not IsValid(transporter) then
+		mfchat.error(player, "{s blue} not found.", "Transporter pad")
+		return
+	end
+
+	local transportFunction = chooseTransport(transporter)
+	transportFunction(transporter, targetEntities, nil, beamMode.BEAM_TO_PADS, function(success, reason)
+		if success then
+			local str = transportActions[data.action].." "
+			local printTable = {}
+			for i = 1, #targetEntities do
+				if targetEntities[i]:isPlayer() then
+					if targetEntities[i] == player then
+						printTable[#printTable+1] = "{P you}"
+					else
+						printTable[#printTable+1] = "{P}"
+					end
+				else
+					printTable[#printTable+1] = "{en}"
+				end
+			end
+
+			str = str .. table.concat(printTable, ", ") .. " up."
+			mfchat.say(player, str, unpack(targetEntities))
+		else
+			mfchat.error(player, "Unable to comply, {s}.", reason)
+		end
+	end)
 end
 
 mfchat.addCommand("(%w+) (%w+) to (%w+)", transportTargets, {
 	{"action", "choice:transport,beam,send,take"},
 	{"targets", "any"},
-	{"destination", "any"},
+	{"destination", "any"}
 })
 
-mfchat.addCommand("(%w+) (%w+) to (%w+)'?s? (%w+)", transportTargets, {
+mfchat.addCommand("(%w+) (.+) to (%w+)'?s? (%w+)", transportTargets, {
 	{"action", "choice:transport,beam,send,take"},
 	{"targets", "any"},
 	{"destination", "any"},
 	{"targetDetails", "choice:ship,pad"}
 })
 
-mfchat.addCommand("(%w+) (%w+) (up)", transportTargets, {
+mfchat.addCommand("(%w+) (.+) up", transportUp, {
 	{"action", "choice:transport,beam,send,take,scoop"},
-	{"targets", "any"},
-	{"destination", "any"},
+	{"targets", "any"}
 })

@@ -105,3 +105,4 @@ function checkCombatReady(player)
 end
 
 mfchat.addCommand("check combat readiness", checkCombatReady)
+mfchat.addCommand("check battle readiness", checkCombatReady)

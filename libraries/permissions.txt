@@ -49,23 +49,23 @@ function mfperms.isPermalisted(player)
 end
 
 function playerMeta:isWhitelisted()
-	return mainframe.isWhitelisted(self)
+	return mfperms.isWhitelisted(self)
 end
 
 function playerMeta:isBlacklisted()
-	return mainframe.isBlacklisted(self)
+	return mfperms.isBlacklisted(self)
 end
 
 function playerMeta:isPermalisted()
-	return mainframe.isPermalisted(self)
+	return mfperms.isPermalisted(self)
 end
 
 --Adds a player to the whitelist..
 function mfperms.addToWhitelist(player)
 	checkValidPlayer(player)
 	if player == ents.owner() then return false, "can't add the owner to the whitelist" end
-	if mainframe.isWhitelisted(player) then return false, "player already in the whitelist" end
-	if mainframe.isPermalisted(player) then return false, "player already in the permalist" end
+	if mfperms.isWhitelisted(player) then return false, "player already in the whitelist" end
+	if mfperms.isPermalisted(player) then return false, "player already in the permalist" end
 
 	mainframe.blacklist[player:steamID()] = nil
 	mainframe.whitelist[player:steamID()] = {
