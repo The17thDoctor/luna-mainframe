@@ -72,10 +72,11 @@ if SERVER then
 		mfchat.say(player, "Luna's official documentation can be found here : {s blue}", url)
 	end)
 
-	if luna.shouldGreet then
+	if luna.shouldGreet and not globaltables.player.lunagreeted then
 		mfchat.say(ents.owner(), "Salutations {P}", ents.owner())
 		mfchat.say(ents.owner(), "If you require any help, please use {blue}/{s} help{white}.", mainframe.getSetting("Command Prefix", "value"))
 		mfchat.warn(ents.owner(), "This mainframe is currently under developpement and thus is lacking many features.")
+		globaltables.player.lunagreeted = true
 	end
 
 	mainframe.loadFile()

@@ -14,7 +14,7 @@
 --@includedir luna/modules/custom
 
 --Luna's extra settings
-luna.shouldGreet = false --Should luna greet you on startup ?
+luna.shouldGreet = true --Should luna greet you on startup ?
 luna.shouldGreetMainframes = false --Should luna greet other mainframes ?
 
 luna.redAlertSound = "TNG" --What red alert sound should luna use ?

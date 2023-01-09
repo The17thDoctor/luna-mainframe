@@ -5,12 +5,68 @@ if CLIENT then return end
 
 local target = nil
 
+local ownableEntities = {
+	ship_core = "starship",
+	sg_vehicle_f302 = "f302",
+	sg_vehicle_teltac = "teltak",
+	puddle_jumper = "cap jumper",
+	scifi_shuttle = "scifi shuttle",
+	sg_vehicle_glider = "death glider",
+	st_shuttle_type6 = "type6 shuttle",
+	st_shuttle_type9 = "type9 shuttle",
+	st_shuttle_type11 = "type11 shuttle",
+	atlantis_puddle_jumper = "tscm jumper",
+	sg_vehicle_shuttle = "destiny shuttle",
+}
+
 function parseTargeting(player, data)
+
+	local targetEntity, targetName
 	print(data.target, data.owner)
+
+	if data.target == "borg" or data.target == "box" then
+		local borgs = find.byClass("box_*")
+		if not IsValid(borgs[1]) then
+			mfchat.error(player, "Could not find any {s} ship.", data.target)
+			return
+		end
+
+		targetEntity = borgs[1]
+		targetName = mfchat.parseMessage("the {s green}", targetEntity:getPrintName())
+	elseif data.target == "this" or data.target == "that" then
+		local entity = player:aimEntity()
+		if not IsValid(entity) then
+			mfchat.error(player, "Cannot see anything infront of {P you}.", player)
+			return
+		end
+
+		targetEntity = entity
+		targetName = mfchat.parseMessage("{s blue}", data.target)
+	elseif IsValid(data.owner) then
+		local found = false
+		local foundName
+		for class, name in pairs(ownableEntities) do
+			if string.find(name, data.target) ~= nil then
+				print(class)
+			end
+		end
+
+		if not found then
+			if foundName ~= nil then
+				mfchat.error(player, "Could not find any {s} owned by {P}.", foundName, data.owner)
+			else
+				mfchat.error(player, "Invalid target type.")
+			end
+
+			return
+		end
+	else
+		mfchat.error(player, "Invalid target type.")
+	end
 end
 
 mfchat.addCommand("target (%w+)", parseTargeting, {{"target", "any"}})
-mfchat.addCommand("target (%w+)'?s? (%w+)", parseTargeting, {{"owner", "player"}, {"target", "any"}})
+mfchat.addCommand("target (%w+)'?s? (.+)", parseTargeting, {{"owner", "player"}, {"target", "any"}})
 
 function checkCombatReady(player)
 

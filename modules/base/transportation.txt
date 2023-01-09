@@ -773,7 +773,7 @@ local function transportTargets(player, data)
 			matchedEnts[entity] = true
 			targetEntities[#targetEntities+1] = entity
 		elseif not IsValid(entity) and not matchedEnts["pads"] then
-			mfchat.error(player, "Could not find anyone under the name '{s red}'.", target)
+			mfchat.error(player, "Could not find anyone named '{s red}'.", target)
 			return
 		end
 	end
@@ -910,7 +910,7 @@ local function transportUp(player, data)
 			matchedEnts[entity] = true
 			targetEntities[#targetEntities+1] = entity
 		elseif not IsValid(entity) then
-			mfchat.error(player, "Could not find anyone under the name '{s red}'.", target)
+			mfchat.error(player, "Could not find anyone named '{s red}'.", target)
 			return
 		end
 	end
