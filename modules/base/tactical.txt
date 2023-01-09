@@ -19,6 +19,21 @@ local ownableEntities = {
 	sg_vehicle_shuttle = "destiny shuttle",
 }
 
+--Crude but simple function
+local function wordToNumber(word)
+	if word == "first" then
+		return 1
+	elseif word == "second" then
+		return 2
+	elseif word == "third" then
+		return 3
+	elseif word == "fourth" then
+		return 4
+	else
+		return nil
+	end
+end
+
 function parseTargeting(player, data)
 
 	local targetEntity, targetName
@@ -45,9 +60,47 @@ function parseTargeting(player, data)
 	elseif IsValid(data.owner) then
 		local found = false
 		local foundName
+
+		local splt = data.target:explode(" ")
+		local index, indexName
+		if wordToNumber(splt[1]) then
+			index = wordToNumber(splt[1])
+			indexName = splt[1]
+			table.remove(splt, 1)
+			data.target = table.concat(splt, " ")
+		elseif splt[1] == "closest" then
+			index = "closest"
+			table.remove(splt, 1)
+			data.target = table.concat(splt, " ")
+		end
+
 		for class, name in pairs(ownableEntities) do
 			if string.find(name, data.target) ~= nil then
-				print(class)
+				foundName = name
+				local ent = find.byClass(class)
+
+				found = true
+				if #ent > 1 then
+					if index == nil then
+						mfchat.error(player, "{P} has {d} {s}, please specify which one.", data.owner, #ent, name)
+					elseif index == "closest" then
+						table.sort(ent, function(a, b)
+							return a:pos():Distance(player:pos()) < b:pos():Distance(player:pos())
+						end)
+
+						targetEntity = ent[1]
+						targetName = mfchat.parseMessage("{P}'s closest {s}", data.owner, name)
+						break
+					else
+
+					end
+				elseif #ent == 1 then
+					targetEntity = ent[1]
+					targetName = mfchat.parseMessage("{P}'s {s}", data.owner, name)
+					break
+				else
+					found = false
+				end
 			end
 		end
 
