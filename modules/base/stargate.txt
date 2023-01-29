@@ -1,0 +1,157 @@
+--@name Luna Mainframe | Module | Stargate Control
+--@author The17thDoctor
+
+if CLIENT then return end
+
+mainframe.addSetting("Favorite Stargate", mainframe.SETTING_TYPE_WORD, "none", {
+	choices = {
+		none = true,
+		stargate_sg1 = true,
+		stargate_movie = true,
+		stargate_tollan = true,
+		stargate_atlantis = true,
+		stargate_universe = true,
+		stargate_infinity = true,
+	}
+})
+
+mfperms.registerPermission("stargate", mfperms.GRANTED)
+mfperms.registerPermission("stargate.dial", mfperms.PARENT)
+mfperms.registerPermission("stargate.close", mfperms.PARENT)
+
+local stargateName = "Stargate"
+if luna.goauldMode == true then stargateName = "Chappa'ai" end
+
+--Stargates
+Module("stargate_sg1", {entity = stargateName, system = stargateName}, true, false)
+Module("stargate_movie", {entity = stargateName, system = stargateName}, true, false)
+Module("stargate_tollan", {entity = stargateName, system = stargateName}, true, false)
+Module("stargate_atlantis", {entity = stargateName, system = stargateName}, true, false)
+Module("stargate_universe", {entity = stargateName, system = stargateName}, true, false)
+Module("stargate_infinity", {entity = stargateName, system = stargateName}, true, false)
+
+--Misc Devices
+Module("call_forwarding_device", {entity = "Call Forwarding Device", system = "Call Forwarding Device"}, true, true, standardToggler)
+
+local worldAddresses = {
+	["Earth"] = "EARTHP",
+	["Hiigara"] = "HIGAR1",
+	["Shakuras"] = "SHAKUR",
+	["Lava Planet"] = "LAV0PN",
+	["Desert Planet"] = "DESRTP",
+	["Space Station"] = "STAION",
+}
+
+function dialAddress(gate, address, mode, callback)
+	if not IsValid(gate) then
+		callback(false, stargateName .. " not found")
+		return
+	elseif gate:active() then
+		callback(false, stargateName .. " currently active")
+		return
+	end
+
+	local addresses = gate:addressList()
+
+	local found, keyValuePair = mfutils.valueInTable(addresses, address, mfutils.SEARCH_BY_VALUES, true)
+
+	if not found then
+		callback(false, "address unreachable")
+		return
+	end
+
+	local splt = keyValuePair.value:explode(" ")
+
+	address = splt[1]
+	if splt[1] == "1" then address = splt[2] end
+
+	local success, reason = gate:dial(address, mode)
+	callback(success, reason)
+end
+
+function dialCallback(player, address, success, reason)
+	if success then
+		mfchat.say(player, "Dialing {s blue}.", address)
+		return
+	end
+
+	mfchat.error(player, "Unable do dial {s blue}, {s}.", address, reason)
+end
+
+function parseDial(player, data)
+	local gate = mfwire.getModuleByName(stargateName, function(module)
+		return IsValid(module)
+	end)
+
+	gate = gate[mainframe.getSetting("Favorite Stargate", "value")] or gate[1]
+	if not IsValid(gate) then
+		mfchat.error(player, "{s blue} not found.", stargateName)
+		return
+	end
+
+	local worldFound, keyValuePair = mfutils.valueInTable(worldAddresses, data.target, mfutils.SEARCH_BY_KEYS, true)
+
+	local mode = stargate.DIAL_MODE_FAST
+	if data.mode == "fast" then
+		mode = stargate.DIAL_MODE_FAST
+	elseif data.mode == "slow" then
+		mode = stargate.DIAL_MODE_SLOW
+	elseif data.mode == "nox" then
+		mode = stargate.DIAL_MODE_NOX
+	end
+
+	if worldFound then
+		dialAddress(gate:getEntity(), keyValuePair.value, mode, function(success, reason)
+			dialCallback(player, keyValuePair.value, success, reason)
+		end)
+	elseif mfutils.isPlayer(data.target) then
+		local _, owner = mfutils.isPlayer(data.target)
+		local ownedGates = find.byClass("stargate_*", function(ent)
+			return ent:owner() == owner and ent:class() ~= "stargate_iris" and ent ~= gate:getEntity()
+		end)
+
+		if #ownedGates == 0 then
+			mfchat.error(player, "{P} has no dialable {s}.", owner, stargateName:lower())
+			return
+		end
+
+		if #ownedGates > 1 then
+			print(data.ordinal)
+			if data.ordinal == nil then
+				mfchat.error(player, "{P} has {d} {s}s, please specify which one.", owner, #ownedGates, stargateName:lower())
+				for i = 1, #ownedGates do
+					mfchat.error(player, "{d}: {s blue}", i, ownedGates[i]:address())
+				end
+				return
+			end
+
+			local index = mfutils.wordToNumber(data.ordinal)
+			if index == nil then
+				mfchat.error(player, "Please specify a valid ordinal.")
+				return
+			elseif index > #ownedGates then
+				mfchat.error(player, "{P} only has {d} {s}s.", owner, #ownedGates, stargateName:lower())
+				return
+			end
+
+			dialAddress(gate:getEntity(), ownedGates[index]:address(), mode, function(success, reason)
+				dialCallback(player, ownedGates[index]:address(), success, reason)
+			end)
+		else
+			dialAddress(gate:getEntity(), ownedGates[1]:address(), mode, function(success, reason)
+				dialCallback(player, ownedGates[1]:address(), success, reason)
+			end)
+		end
+	else
+
+	end
+end
+
+mfchat.addCommand("dial (%w+)", parseDial, {
+	{"target", "any"}
+})
+
+mfchat.addCommand("dial (%w+) (%w+)", parseDial, {
+	{"target", "any"},
+	{"mode", "choice:fast,slow,nox"}
+})

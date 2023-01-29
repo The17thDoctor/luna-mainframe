@@ -43,7 +43,7 @@ local function standardToggler(module, enable, player)
 			wirelink[activator] = 1
 			mfchat.say(player, "Enabling the {s blue}.", module:systemName())
 
-			if wirelink["Subsystem Health"] < 25 then
+			if wirelink["Subsystem Health"] ~= nil and wirelink["Subsystem Health"] < 25 then
 				mfchat.error(player, "Subsystem health below 25%, the {s blue} won't engage!", module:systemName())
 			end
 			return
@@ -97,6 +97,8 @@ local function standardToggler(module, enable, player)
 		end
 	end
 end
+
+environment.addGlobal(standardToggler, "standardToggler")
 
 local function shieldToggler(module, enable, player, action)
 	if not IsValid(module) then

@@ -563,9 +563,18 @@ function mfchat.say(player, message, ...)
 	if not IsValid(player) or not player:isPlayer() then return end
 
 	local prefix = mainframe.getSetting("Chat Prefix", "value") or "Luna"
+	local messageTable
 
-	local messageTable = mfchat.parseMessage(message, ...)
 	local prefixTable = mfchat.parseMessage("{prefix}{s} ➾ {white}", prefix)
+
+
+	if type(message) == "string" then
+		messageTable = mfchat.parseMessage(message, ...)
+	elseif type(message) == "table" then
+		messageTable = message
+	else
+		error("Invalid message value type : " .. type(message), 1)
+	end
 
 	for i = 1, #messageTable do
 		prefixTable[#prefixTable+1] = messageTable[i]

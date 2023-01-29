@@ -1,0 +1,144 @@
+--@name Luna Mainframe | Library | Utilities
+--@author The17thDoctor
+
+local checkType = libraries.checkType
+
+local mfutils = {}
+
+mfutils.SEARCH_BY_KEYS = 1
+mfutils.SEARCH_BY_VALUES = 2
+
+function mfutils.valueInTable(t, toSearch, searchBy, ignoreCase)
+	checkType(t, "table", "table", 1)
+	checkType(toSearch, "string", "toSearch", 1)
+	checkType(searchBy, "number", "searchBy", 1)
+
+	ignoreCase = ignoreCase or false
+
+	if ignoreCase then
+		toSearch = toSearch:lower()
+	end
+
+	local found = {}
+
+	for k, v in pairs(t) do
+		local value
+		if searchBy == mfutils.SEARCH_BY_KEYS then
+			value = k
+		elseif searchBy == mfutils.SEARCH_BY_VALUES then
+			value = v
+		else
+			error("Invalid searchBy value.", 1)
+		end
+
+		if ignoreCase then
+			value = value:lower()
+		end
+
+		if string.find(value, toSearch) ~= nil then
+			local s, e = string.find(value, toSearch)
+			found[#found+1] = {s, e - s, {key = k, value = v}}
+		end
+	end
+
+	if #found == 0 then
+		return false
+	else
+		table.sort(found, function(a, b)
+			if a[2] > b[2] then
+				return true
+			elseif a[2] == b[2] and a[1] < b[1] then
+				return true
+			else
+				return false
+			end
+		end)
+
+		return true, found[1][3]
+	end
+end
+
+function mfutils.valuesInTable(t, toSearch, searchBy, ignoreCase)
+	checkType(t, "table", "table", 1)
+	checkType(toSearch, "string", "toSearch", 1)
+	checkType(searchBy, "number", "searchBy", 1)
+
+	ignoreCase = ignoreCase or false
+
+	if ignoreCase then
+		toSearch = toSearch:lower()
+	end
+
+	local found = {}
+
+	for k, v in pairs(t) do
+		local value
+		if searchBy == mfutils.SEARCH_BY_KEYS then
+			value = k
+		elseif searchBy == mfutils.SEARCH_BY_VALUES then
+			value = v
+		else
+			error("Invalid searchBy value.", 1)
+		end
+
+		if ignoreCase then
+			value = value:lower()
+		end
+
+		if string.find(value, toSearch) ~= nil then
+			found[#found+1] = {key = k, value = v}
+		end
+	end
+
+	if #found == 0 then
+		return false
+	else
+		return true, found
+	end
+end
+
+function mfutils.isPlayer(str)
+	if type(str) == "Player" then return true, str end
+	local player = find.playerByName(str)
+
+	if IsValid(player) then
+		return true, player
+	else
+		return false
+	end
+end
+
+local ordonals = {
+	"first",
+	"second",
+	"third",
+	"fourth",
+	"fith",
+	"sixth",
+	"seventh",
+	"eighth",
+	"ninth",
+	"tenth",
+	"eleventh",
+	"twelfth",
+	"thirteenth",
+	"fourteenth",
+	"fiveteenth",
+	"sixteenth",
+	"seventeenth",
+	"eighteenth",
+	"nineteenth",
+	"twentieth"
+}
+
+function mfutils.wordToNumber(word)
+	for i = 1, #ordonals do
+		if word:lower() == ordonals[i] then
+			return i
+		end
+	end
+
+	return nil
+end
+
+libraries.addToEnvironment("mfutils", mfutils)

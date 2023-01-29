@@ -165,7 +165,7 @@ local function engageWarp(drive, position, angle, callback, dontRegister)
 
 	timer.simple(0.2, function()
 		local fail = false
-		if wirelink["Blocked"] then
+		if wirelink["Blocked"] == 1 then
 			callback(false, "trajectory blocked")
 			fail = true
 		elseif wirelink["Active"] == 0 then

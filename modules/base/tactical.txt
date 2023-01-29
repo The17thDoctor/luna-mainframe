@@ -19,25 +19,21 @@ local ownableEntities = {
 	sg_vehicle_shuttle = "destiny shuttle",
 }
 
---Crude but simple function
-local function wordToNumber(word)
-	if word == "first" then
-		return 1
-	elseif word == "second" then
-		return 2
-	elseif word == "third" then
-		return 3
-	elseif word == "fourth" then
-		return 4
-	else
-		return nil
-	end
+local function startTargeting(entity)
+
+end
+
+local function stopTargeting()
+
+end
+
+local function toggleWeapon(weapon, enable)
+
 end
 
 function parseTargeting(player, data)
 
 	local targetEntity, targetName
-	print(data.target, data.owner)
 
 	if data.target == "borg" or data.target == "box" then
 		local borgs = find.byClass("box_*")
@@ -57,14 +53,26 @@ function parseTargeting(player, data)
 
 		targetEntity = entity
 		targetName = mfchat.parseMessage("{s blue}", data.target)
+	elseif IsValid(find.playerByName(data.target)) then
+		targetEntity = find.playerByName(data.target)
+		targetName = mfchat.parseMessage("{P}", targetEntity)
+	elseif data.target == "off" then
+		if not IsValid(target) then
+			mfchat.error(player, "Nothing is currently being targeted.")
+			return
+		end
+
+		stopTargeting()
+		mfchat.say(player, "Turning off targeting systems.")
+		return
 	elseif IsValid(data.owner) then
 		local found = false
 		local foundName
 
 		local splt = data.target:explode(" ")
 		local index, indexName
-		if wordToNumber(splt[1]) then
-			index = wordToNumber(splt[1])
+		if mfutils.wordToNumber(splt[1]) then
+			index = mfutils.wordToNumber(splt[1])
 			indexName = splt[1]
 			table.remove(splt, 1)
 			data.target = table.concat(splt, " ")
@@ -115,7 +123,12 @@ function parseTargeting(player, data)
 		end
 	else
 		mfchat.error(player, "Invalid target type.")
+		return
 	end
+
+	table.insert(targetName, 1, "Targeting ")
+	targetName[#targetName+1] = "."
+	mfchat.say(player, targetName)
 end
 
 mfchat.addCommand("target (%w+)", parseTargeting, {{"target", "any"}})
@@ -207,9 +220,9 @@ function checkCombatReady(player)
 	end
 
 	if IsValid(target) then
-		mfchat.say(player, "{s blue} Targeting {blue}{en}{white}.", info, target)
+		mfchat.say(player, "{s blue} Targeting {blue}{E}{white}.", info, target)
 	else
-		mfchat.say(player, "{s yellow} No target has been set.", warn)
+		mfchat.say(player, "{s blue} No target has been set.", info)
 	end
 end
 

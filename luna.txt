@@ -28,6 +28,7 @@ bootstrapper.addLibrary("rendering")
 bootstrapper.addLibrary("wirelink")
 bootstrapper.addLibrary("design")
 bootstrapper.addLibrary("chat")
+bootstrapper.addLibrary("utilities")
 bootstrapper.addLibrary("environment")
 
 --[[ Luna's Module Loading Order
